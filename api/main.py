@@ -2,6 +2,7 @@
 """FastAPI application for Qwen3-TTS story management and generation."""
 
 import asyncio
+import os
 import re
 import uuid
 from contextlib import asynccontextmanager
@@ -29,10 +30,10 @@ from scripts.common import load_tts_model
 # Global model cache
 _model_cache: Qwen3TTSModel | None = None
 _model_config: dict[str, str] = {
-    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
-    "device": "cuda:0",
-    "dtype": "bfloat16",
-    "attn": "auto",
+    "model": os.getenv("QWEN3_TTS_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-Base"),
+    "device": os.getenv("QWEN3_TTS_DEVICE", "cuda:0"),
+    "dtype": os.getenv("QWEN3_TTS_DTYPE", "bfloat16"),
+    "attn": os.getenv("QWEN3_TTS_ATTN", "auto"),
 }
 
 
@@ -88,7 +89,7 @@ async def process_job_queue():
                 # Get request parameters
                 request_params = job.requestParams or {}
                 concat = request_params.get("concat", True)
-                language = "English"  # Default language
+                language = str(request_params.get("language") or os.getenv("QWEN3_TTS_LANGUAGE", "English"))
 
                 # Get cached model
                 tts_model = get_or_load_model()
@@ -135,13 +136,18 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Qwen3-TTS Home API", version="0.1.0", lifespan=lifespan)
 
 # Enable CORS for mobile web app access
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # For local/home use - adjust if needed
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS origins: comma-separated list, or "*" for all, or empty for no CORS
+_cors_origins_env = os.getenv("QWEN3_TTS_CORS_ORIGINS", "*")
+_cors_origins = ["*"] if _cors_origins_env == "*" else [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else []
+
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/voices")
@@ -323,4 +329,6 @@ def get_story_audio(storyId: str) -> FileResponse:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    host = os.getenv("QWEN3_TTS_HOST", "0.0.0.0")
+    port = int(os.getenv("QWEN3_TTS_PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)

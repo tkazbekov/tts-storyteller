@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Load uv (adds ~/.local/bin to PATH)
-source "$HOME/.local/bin/env"
+# Get the directory where this script is located (project root)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Load uv (adds ~/.local/bin to PATH) - optional
+if [ -f "$HOME/.local/bin/env" ]; then
+    source "$HOME/.local/bin/env"
+fi
 
 # Ensure local SoX is available
 export PATH="$HOME/.local/bin:$PATH"
 
 # Activate project venv
-source "$HOME/qwen3-tts/.venv/bin/activate"
+source "$SCRIPT_DIR/.venv/bin/activate"
+
+# Add project root to PYTHONPATH so imports work
+export PYTHONPATH="$SCRIPT_DIR:${PYTHONPATH:-}"
 
 # Prefer CUDA 12.8 toolkit for compatibility with torch+cu128
 if [ -d "/usr/local/cuda-12.8" ]; then
