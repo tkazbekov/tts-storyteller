@@ -84,9 +84,17 @@ def parse_txt_story(txt_path: Path) -> StoryTemplate:
     # Generate title from filename
     title = txt_path.stem.replace("_", " ").title()
 
+    # Determine language: use most common language from lines, or default to "English"
+    from collections import Counter
+
+    languages = [_language for _, _language, _ in lines_data]
+    language_counts = Counter(languages)
+    story_language = language_counts.most_common(1)[0][0] if language_counts else "English"
+
     return StoryTemplate(
         schemaVersion=1,
         title=title,
+        language=story_language,
         defaultVoiceId=default_voice_id,
         roles=roles,
         casting=casting,

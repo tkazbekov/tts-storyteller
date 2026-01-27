@@ -5,6 +5,7 @@ from pathlib import Path
 
 from qwen_tts import Qwen3TTSModel
 
+from lib.incremental import get_existing_audio_files
 from lib.models import ResolvedLine
 from lib.paths import get_prompt_path, get_story_output_dir
 from scripts.common import load_prompt, load_tts_model, save_wav
@@ -20,6 +21,7 @@ def generate_story_audio(
     attn: str = "auto",
     language: str = "English",
     concat: bool = True,
+    regenerate_indices: set[int] | None = None,
 ) -> Path:
     """
     Generate audio for a story from resolved lines.
@@ -34,6 +36,9 @@ def generate_story_audio(
         attn: Attention implementation (auto|none|flash_attention_2)
         language: Language for generation (defaults to English)
         concat: Whether to concatenate outputs into one WAV
+        regenerate_indices: Optional set of 0-based line indices to regenerate.
+            If None, all lines are generated. If provided, only these indices
+            are regenerated; other lines reuse existing files if available.
 
     Returns:
         Path to the concatenated audio file (if concat=True) or directory with individual files
@@ -55,11 +60,25 @@ def generate_story_audio(
     out_dir = get_story_output_dir(story_id)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Get existing audio files if doing incremental generation
+    existing_files: dict[int, Path] = {}
+    if regenerate_indices is not None:
+        existing_files = get_existing_audio_files(story_id)
+
     # Generate audio for each line
     out_files: list[str] = []
     prompt_cache: dict[str, list] = {}
 
-    for idx, resolved_line in enumerate(resolved_lines, start=1):
+    for idx, resolved_line in enumerate(resolved_lines):
+        # Check if we should reuse existing file
+        if regenerate_indices is not None and idx not in regenerate_indices:
+            # Try to reuse existing file
+            if idx in existing_files:
+                out_files.append(str(existing_files[idx]))
+                continue
+            # If no existing file, we need to generate it
+            # (this handles new lines that don't have existing files)
+
         voice_id = resolved_line.voiceId
         text = resolved_line.line
 
@@ -77,8 +96,8 @@ def generate_story_audio(
             voice_clone_prompt=prompt_cache[voice_id],
         )
 
-        # Save individual line audio
-        out_path = out_dir / f"{idx:03d}_{voice_id}.wav"
+        # Save individual line audio (1-based index for filename)
+        out_path = out_dir / f"{idx + 1:03d}_{voice_id}.wav"
         save_wav(str(out_path), wavs[0], sr)
         out_files.append(str(out_path))
 

@@ -14,7 +14,7 @@ from qwen_tts import Qwen3TTSModel
 
 from lib.generation import generate_story_audio
 from lib.models import GenerateRequest, Job, ResolvedLine, StoryTemplate, Voice
-from lib.paths import get_story_full_audio_path
+from lib.paths import get_story_full_audio_path, get_story_output_dir
 from lib.resolution import resolve_story
 from lib.storage import (
     get_available_voice_ids,
@@ -53,6 +53,10 @@ def get_or_load_model() -> Qwen3TTSModel:
 # In-memory job storage (keyed by job ID)
 JOBS: dict[str, Job] = {}
 
+# Track which story has an active job (running or queued)
+# Maps storyId -> jobId
+_story_active_jobs: dict[str, str] = {}
+
 # Background task queue (simple single-worker queue)
 _job_queue: asyncio.Queue = asyncio.Queue()
 _processing_job: str | None = None
@@ -76,6 +80,10 @@ async def process_job_queue():
             job.status = "running"
             job.message = "Generating audio..."
 
+            # Track that this story is being processed
+            if job.storyId:
+                _story_active_jobs[job.storyId] = job_id
+
             try:
                 # Validate storyId is present
                 if not job.storyId:
@@ -86,12 +94,23 @@ async def process_job_queue():
                 available_voices = get_available_voice_ids()
                 resolved_lines = resolve_story(story, available_voices)
 
+                # Get language from story template (defaults to "English")
+                language = story.language
+
                 # Get request parameters
                 request_params = job.requestParams or {}
                 concat = request_params.get("concat", True)
-                language = str(
-                    request_params.get("language") or os.getenv("QWEN3_TTS_LANGUAGE", "English")
-                )
+
+                # Automatically use incremental generation if metadata exists
+                # Check if we have previous generation metadata
+                from lib.metadata import find_changed_indices, load_line_hashes
+
+                regenerate_indices: set[int] | None = None
+                if load_line_hashes(job.storyId) is not None:
+                    # Metadata exists - use incremental generation
+                    changed_indices = find_changed_indices(job.storyId, resolved_lines, language)
+                    regenerate_indices = changed_indices
+                # If no metadata exists, regenerate_indices stays None (full generation)
 
                 # Get cached model
                 tts_model = get_or_load_model()
@@ -104,11 +123,18 @@ async def process_job_queue():
                     tts_model=tts_model,
                     language=language,
                     concat=concat,
+                    regenerate_indices=regenerate_indices,
                 )
+
+                # Save metadata for future incremental generation
+                from lib.metadata import save_line_hashes
+
+                save_line_hashes(job.storyId, resolved_lines, language)
 
                 # Update job with success
                 job.status = "succeeded"
                 job.message = "Generation completed"
+                # Store the path: file path if concatenated, directory path if not
                 job.outputPath = str(output_path)
 
             except Exception as e:
@@ -117,12 +143,20 @@ async def process_job_queue():
                 job.message = str(e)
 
             finally:
+                # Clear story tracking when job completes
+                if job.storyId and _story_active_jobs.get(job.storyId) == job_id:
+                    _story_active_jobs.pop(job.storyId, None)
                 _processing_job = None
                 _job_queue.task_done()
 
         except Exception as e:
             # Log error but continue processing
             print(f"Error processing job: {e}")
+            # Clear story tracking on error
+            if _processing_job:
+                job = JOBS.get(_processing_job)
+                if job and job.storyId and _story_active_jobs.get(job.storyId) == _processing_job:
+                    _story_active_jobs.pop(job.storyId, None)
             _processing_job = None
 
 
@@ -296,12 +330,31 @@ def generate_story_endpoint(
     storyId: str,
     request: GenerateRequest | None = None,
 ) -> Job:
-    """Start audio generation for a story."""
+    """
+    Start audio generation for a story.
+
+    Only one job per story can be running or queued at a time.
+    If a job is already active for this story, returns 409 Conflict.
+    """
     # Check if story exists
     try:
         load_story(storyId)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found") from None
+
+    # Check if there's already an active job for this story
+    existing_job_id = _story_active_jobs.get(storyId)
+    if existing_job_id:
+        existing_job = JOBS.get(existing_job_id)
+        if existing_job and existing_job.status in ("queued", "running"):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Job already active for story '{storyId}'. "
+                    f"Existing job ID: {existing_job_id}, status: {existing_job.status}. "
+                    "Wait for the current job to complete or cancel it before starting a new one."
+                ),
+            )
 
     # Create job with request parameters
     job_id = str(uuid.uuid4())
@@ -317,6 +370,9 @@ def generate_story_endpoint(
     )
 
     JOBS[job_id] = job
+
+    # Track that this story has a queued job
+    _story_active_jobs[storyId] = job_id
 
     # Queue job for processing
     _job_queue.put_nowait(job_id)
@@ -335,16 +391,89 @@ def get_job_endpoint(jobId: str) -> Job:
 
 @app.get("/audio/stories/{storyId}/full.wav")
 def get_story_audio(storyId: str) -> FileResponse:
-    """Download the concatenated audio file for a story."""
+    """
+    Download the concatenated audio file for a story.
+
+    Note: This endpoint only works if the story was generated with `concat: true`.
+    If `concat: false`, individual audio files are in the output directory but
+    no concatenated file exists. Use `/audio/stories/{storyId}/files` to list individual files.
+    """
     audio_path = get_story_full_audio_path(storyId)
 
     if not audio_path.exists():
-        raise HTTPException(status_code=404, detail=f"Audio for story '{storyId}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Audio for story '{storyId}' not found. "
+            "This endpoint requires the story to be generated with 'concat: true'. "
+            "Check the job's outputPath for individual audio files location, "
+            "or use GET /audio/stories/{storyId}/files to list available files.",
+        )
 
     return FileResponse(
         path=str(audio_path),
         media_type="audio/wav",
         filename=f"{storyId}_full.wav",
+    )
+
+
+@app.get("/audio/stories/{storyId}/files")
+def list_story_audio_files(storyId: str) -> list[str]:
+    """
+    List all individual audio files for a story.
+
+    Returns a list of filenames in the story's output directory.
+    These are the individual line audio files (e.g., "001_narrator_male.wav").
+    """
+    output_dir = get_story_output_dir(storyId)
+
+    if not output_dir.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Output directory for story '{storyId}' not found. "
+            "The story may not have been generated yet.",
+        )
+
+    # List all .wav files in the directory, sorted
+    wav_files = sorted([f.name for f in output_dir.glob("*.wav")])
+
+    if not wav_files:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No audio files found for story '{storyId}'.",
+        )
+
+    return wav_files
+
+
+@app.get("/audio/stories/{storyId}/files/{filename}")
+def get_story_audio_file(storyId: str, filename: str) -> FileResponse:
+    """
+    Download a specific individual audio file for a story.
+
+    Use GET /audio/stories/{storyId}/files to list available filenames.
+    """
+    output_dir = get_story_output_dir(storyId)
+    audio_path = output_dir / filename
+
+    # Security: ensure the file is within the output directory
+    try:
+        audio_path.resolve().relative_to(output_dir.resolve())
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid filename: '{filename}'",
+        ) from None
+
+    if not audio_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Audio file '{filename}' not found for story '{storyId}'.",
+        ) from None
+
+    return FileResponse(
+        path=str(audio_path),
+        media_type="audio/wav",
+        filename=filename,
     )
 
 

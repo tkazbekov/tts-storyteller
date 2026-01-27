@@ -41,6 +41,10 @@ class StoryTemplate(BaseModel):
 
     schemaVersion: Literal[1] = Field(1, description="Schema version")
     title: str = Field(..., min_length=1, description="Story title")
+    language: str = Field(
+        "English",
+        description="Language for TTS generation (e.g., 'English', 'Chinese', 'Spanish')",
+    )
     defaultVoiceId: str = Field(
         ...,
         min_length=1,
@@ -52,9 +56,7 @@ class StoryTemplate(BaseModel):
         description="Optional map of roleId (as string key) to voiceId (string value). "
         "Example: {'0': 'narrator_male', '1': 'woman'}. "
         "Keys must be string representations of roleId integers.",
-        json_schema_extra={
-            "example": {"0": "narrator_male", "1": "woman", "2": "child"}
-        },
+        json_schema_extra={"example": {"0": "narrator_male", "1": "woman", "2": "child"}},
     )
     lines: list[StoryLine] = Field(..., description="Story lines")
 
@@ -77,7 +79,9 @@ class ResolvedLine(BaseModel):
 
     id: int = Field(..., ge=0, description="Line identifier")
     roleId: int = Field(..., ge=0, description="Role identifier")
-    voiceId: str = Field(..., min_length=1, description="Resolved voice ID that will be used for this line")
+    voiceId: str = Field(
+        ..., min_length=1, description="Resolved voice ID that will be used for this line"
+    )
     line: str = Field(..., min_length=1, description="The text to speak")
     extra: str | None = Field(None, description="Performance hint")
 
