@@ -20,17 +20,42 @@ class StoryLine(BaseModel):
     roleId: int = Field(..., ge=0, description="Role that speaks this line")
     line: str = Field(..., min_length=1, description="The text to speak")
     extra: str | None = Field(None, description="Performance hint (e.g., 'curious, excited')")
-    actorId: str | None = Field(None, min_length=1, description="Optional per-line voice override")
+    actorId: str | None = Field(
+        None,
+        min_length=1,
+        description="Optional per-line voice override. Highest priority in voice resolution: actorId → casting[roleId] → defaultVoiceId",
+    )
 
 
 class StoryTemplate(BaseModel):
-    """A story template with roles and lines."""
+    """
+    A story template with roles and lines.
+
+    Voice assignment resolution order (for each line):
+    1. line.actorId (if present) - per-line override
+    2. casting[str(roleId)] (if present) - role-level assignment
+    3. defaultVoiceId - fallback for all unassigned roles
+
+    Example casting: {"0": "narrator_male", "1": "woman"} maps roleId 0 to narrator_male, roleId 1 to woman.
+    """
 
     schemaVersion: Literal[1] = Field(1, description="Schema version")
     title: str = Field(..., min_length=1, description="Story title")
-    defaultVoiceId: str = Field(..., min_length=1, description="Fallback voice ID")
+    defaultVoiceId: str = Field(
+        ...,
+        min_length=1,
+        description="Fallback voice ID used when a role has no casting assignment and line has no actorId",
+    )
     roles: list[Role] = Field(..., description="Story roles")
-    casting: dict[str, str] | None = Field(None, description="Map of roleId (as string) to voiceId")
+    casting: dict[str, str] | None = Field(
+        None,
+        description="Optional map of roleId (as string key) to voiceId (string value). "
+        "Example: {'0': 'narrator_male', '1': 'woman'}. "
+        "Keys must be string representations of roleId integers.",
+        json_schema_extra={
+            "example": {"0": "narrator_male", "1": "woman", "2": "child"}
+        },
+    )
     lines: list[StoryLine] = Field(..., description="Story lines")
 
     @field_validator("roles", "lines")
@@ -43,13 +68,18 @@ class StoryTemplate(BaseModel):
 
 
 class ResolvedLine(BaseModel):
-    """A story line with resolved voice assignment."""
+    """
+    A story line with resolved voice assignment.
 
-    id: int = Field(..., ge=0)
-    roleId: int = Field(..., ge=0)
-    voiceId: str = Field(..., min_length=1)
-    line: str = Field(..., min_length=1)
-    extra: str | None = None
+    This is the result of resolving a StoryLine using the resolution order:
+    actorId → casting[roleId] → defaultVoiceId
+    """
+
+    id: int = Field(..., ge=0, description="Line identifier")
+    roleId: int = Field(..., ge=0, description="Role identifier")
+    voiceId: str = Field(..., min_length=1, description="Resolved voice ID that will be used for this line")
+    line: str = Field(..., min_length=1, description="The text to speak")
+    extra: str | None = Field(None, description="Performance hint")
 
 
 class Voice(BaseModel):

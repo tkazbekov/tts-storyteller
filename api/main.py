@@ -89,7 +89,9 @@ async def process_job_queue():
                 # Get request parameters
                 request_params = job.requestParams or {}
                 concat = request_params.get("concat", True)
-                language = str(request_params.get("language") or os.getenv("QWEN3_TTS_LANGUAGE", "English"))
+                language = str(
+                    request_params.get("language") or os.getenv("QWEN3_TTS_LANGUAGE", "English")
+                )
 
                 # Get cached model
                 tts_model = get_or_load_model()
@@ -138,7 +140,13 @@ app = FastAPI(title="Qwen3-TTS Home API", version="0.1.0", lifespan=lifespan)
 # Enable CORS for mobile web app access
 # CORS origins: comma-separated list, or "*" for all, or empty for no CORS
 _cors_origins_env = os.getenv("QWEN3_TTS_CORS_ORIGINS", "*")
-_cors_origins = ["*"] if _cors_origins_env == "*" else [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else []
+_cors_origins = (
+    ["*"]
+    if _cors_origins_env == "*"
+    else [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+    if _cors_origins_env
+    else []
+)
 
 if _cors_origins:
     app.add_middleware(
@@ -185,7 +193,14 @@ def list_stories_endpoint() -> list[str]:
 
 @app.post("/stories", status_code=201)
 def create_story_endpoint(story: StoryTemplate) -> StoryTemplate:
-    """Create a new story template."""
+    """
+    Create a new story template.
+
+    Voice assignment: Use the `casting` field to map roleIds (as strings) to voiceIds.
+    Resolution order: line.actorId → casting[roleId] → defaultVoiceId
+
+    Example casting: {"0": "narrator_male", "1": "woman"} assigns roleId 0 to narrator_male, roleId 1 to woman.
+    """
     # Validate story structure
     errors = validate_story(story.model_dump())
     if errors:
@@ -254,7 +269,14 @@ def replace_story_endpoint(storyId: str, story: StoryTemplate) -> StoryTemplate:
 
 @app.post("/stories/{storyId}/render")
 def render_story_endpoint(storyId: str) -> list[ResolvedLine]:
-    """Resolve roles to voices for a story."""
+    """
+    Resolve roles to voices for a story.
+
+    Returns a preview of voice assignments showing which voice will be used for each line.
+    Resolution order: line.actorId → casting[roleId] → defaultVoiceId
+
+    Use this endpoint to verify voice assignments before generating audio.
+    """
     try:
         story = load_story(storyId)
     except FileNotFoundError:

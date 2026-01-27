@@ -65,6 +65,7 @@
       },
       "post": {
         "summary": "Create a new story template",
+        "description": "Create a new story template. Use the 'casting' field to map roleIds (as strings) to voiceIds. Resolution order: line.actorId → casting[roleId] → defaultVoiceId. Example casting: {'0': 'narrator_male', '1': 'woman'}.",
         "requestBody": {
           "required": true,
           "content": {
@@ -135,6 +136,7 @@
     "/stories/{storyId}/render": {
       "post": {
         "summary": "Resolve roles to voices for a story",
+        "description": "Returns a preview of voice assignments showing which voice will be used for each line. Resolution order: line.actorId → casting[roleId] → defaultVoiceId. Use this endpoint to verify voice assignments before generating audio.",
         "parameters": [
           { "$ref": "#/components/parameters/storyId" }
         ],
@@ -271,33 +273,42 @@
         "additionalProperties": false,
         "required": ["id", "roleId", "line"],
         "properties": {
-          "id": { "type": "integer", "minimum": 0 },
-          "roleId": { "type": "integer", "minimum": 0 },
-          "line": { "type": "string" },
-          "extra": { "type": "string", "nullable": true },
-          "actorId": { "type": "string", "nullable": true }
+          "id": { "type": "integer", "minimum": 0, "description": "Unique line identifier" },
+          "roleId": { "type": "integer", "minimum": 0, "description": "Role that speaks this line" },
+          "line": { "type": "string", "description": "The text to speak" },
+          "extra": { "type": "string", "nullable": true, "description": "Performance hint (e.g., 'curious, excited')" },
+          "actorId": { "type": "string", "nullable": true, "description": "Optional per-line voice override. Highest priority: actorId → casting[roleId] → defaultVoiceId" }
         }
       },
       "StoryTemplate": {
         "type": "object",
         "additionalProperties": false,
         "required": ["schemaVersion", "title", "defaultVoiceId", "roles", "lines"],
+        "description": "A story template with roles and lines. Voice assignment resolution order (for each line): 1) line.actorId (if present), 2) casting[str(roleId)] (if present), 3) defaultVoiceId (fallback).",
         "properties": {
-          "schemaVersion": { "type": "integer", "const": 1 },
-          "title": { "type": "string" },
-          "defaultVoiceId": { "type": "string" },
+          "schemaVersion": { "type": "integer", "const": 1, "description": "Schema version" },
+          "title": { "type": "string", "description": "Story title" },
+          "defaultVoiceId": { "type": "string", "description": "Fallback voice ID used when a role has no casting assignment and line has no actorId" },
           "roles": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Role" }
+            "items": { "$ref": "#/components/schemas/Role" },
+            "description": "Story roles"
           },
           "casting": {
             "type": "object",
             "additionalProperties": { "type": "string" },
-            "nullable": true
+            "nullable": true,
+            "description": "Optional map of roleId (as string key) to voiceId (string value). Example: {'0': 'narrator_male', '1': 'woman'}. Keys must be string representations of roleId integers.",
+            "example": {
+              "0": "narrator_male",
+              "1": "woman",
+              "2": "child"
+            }
           },
           "lines": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/StoryLine" }
+            "items": { "$ref": "#/components/schemas/StoryLine" },
+            "description": "Story lines"
           }
         }
       },
@@ -305,12 +316,13 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["id", "roleId", "voiceId", "line"],
+        "description": "A story line with resolved voice assignment. Result of resolving a StoryLine using: actorId → casting[roleId] → defaultVoiceId",
         "properties": {
-          "id": { "type": "integer" },
-          "roleId": { "type": "integer" },
-          "voiceId": { "type": "string" },
-          "line": { "type": "string" },
-          "extra": { "type": "string", "nullable": true }
+          "id": { "type": "integer", "description": "Line identifier" },
+          "roleId": { "type": "integer", "description": "Role identifier" },
+          "voiceId": { "type": "string", "description": "Resolved voice ID that will be used for this line" },
+          "line": { "type": "string", "description": "The text to speak" },
+          "extra": { "type": "string", "nullable": true, "description": "Performance hint" }
         }
       },
       "GenerateRequest": {
