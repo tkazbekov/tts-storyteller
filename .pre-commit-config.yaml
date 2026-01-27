@@ -6,9 +6,13 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-all]
-        args: [--ignore-missing-imports]
+  # Mypy is available via 'make type-check' - excluded from pre-commit due to:
+  # 1. Can be slow (slows down commits)
+  # 2. types-all dependency issues in pre-commit environment
+  # 3. Already checked in CI/workflow via Makefile
+  # Run 'make type-check' manually before committing if needed
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.7.0
+  #   hooks:
+  #     - id: mypy
+  #       args: [api, lib]

@@ -1,10 +1,11 @@
 # Qwen3-TTS Local Playground
 
 This folder is a minimal, reproducible setup for Qwen3-TTS with:
-- UV for Python
+- UV for Python venv and package management (faster than pip)
 - CUDA + FlashAttention
 - Scripts to design voices and reuse them for storytelling
 - FastAPI backend for story management and generation
+
 
 This repo is meant as a small, explicit pipeline you can rerun and tweak. The core flow is:
 1) design voices (VoiceDesign model)
@@ -376,6 +377,33 @@ Validates a story template JSON file.
 python scripts/validate_story.py stories/template.json
 ```
 
+### `scripts/convert_txt.py`
+
+Converts old `.txt` format stories to JSON template format.
+
+The old format is `voice_id|language|text` per line (comments starting with `#` are ignored).
+
+```bash
+# Activate venv first (required)
+source env.sh
+
+# Convert a file (outputs to stories/<filename>.json)
+python scripts/convert_txt.py stories/story.txt
+
+# Specify custom output path
+python scripts/convert_txt.py stories/story.txt -o stories/my_story.json
+
+# Dry run to validate without writing
+python scripts/convert_txt.py stories/story.txt --dry-run
+```
+
+The converter:
+- Creates roles from unique voice IDs found in the file
+- Maps each voice ID to a role via the `casting` field
+- Generates a title from the filename
+- Uses `narrator_male` as default voice if present, otherwise the first voice
+- Validates the output against the JSON schema
+
 ## Outputs
 
 ```
@@ -525,6 +553,7 @@ qwen3-tts/
     create_prompts.py
     storyteller.py      # JSON story generation
     validate_story.py
+    convert_txt.py      # Convert old .txt format to JSON
   docs/
     openapi.json
     story-template.schema.json
