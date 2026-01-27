@@ -1,0 +1,37 @@
+# Format: voice_id|language(optional)|text
+narrator_male|English|It was a sunny morning in a small town, and the air smelled like fresh bread.
+narrator_male|English|A woman, a man, a child, and two kind elders planned a simple walk to the park.
+narrator_male|English|The park had a big tree, a tiny pond, and a red bench that everyone loved.
+woman|English|Let us take the easy path today, the one with the flowers.
+man|English|Yes, and we can count the butterflies as we go.
+child|English|Can I bring my little blue bucket?
+old_lady|English|Of course, dear. You might find a shiny leaf to carry home.
+old_man|English|And if we are lucky, we will see a duck.
+narrator_male|English|They walked slowly and happily, looking at the bright flowers along the path.
+narrator_male|English|The child skipped once, then twice, and held the bucket with both hands.
+child|English|I see a yellow flower. It looks like the sun.
+woman|English|Yes, and the sun is smiling at us today.
+man|English|Let us keep going, the pond is just ahead.
+old_lady|English|We can sit and rest by the water.
+old_man|English|Rest is good, especially with a nice view.
+narrator_male|English|At the pond, the water was calm and clear.
+narrator_male|English|A little duck swam in a slow circle, then stopped to look at them.
+child|English|Hello, duck. Do you want to play?
+old_man|English|The duck says, quack, and that means hello.
+old_lady|English|We can wave with our hands and say hello too.
+woman|English|Let us be gentle and quiet, so the duck feels safe.
+man|English|We can sit on the red bench and watch.
+narrator_male|English|They sat together, and the child swung their feet above the grass.
+child|English|I will count: one duck, two rocks, three clouds.
+woman|English|That is a good count.
+man|English|You are a careful watcher.
+old_lady|English|A careful watcher sees kind things.
+old_man|English|And a kind heart makes the day bright.
+narrator_male|English|After a while, they walked home with easy steps.
+narrator_male|English|The child carried a shiny leaf in the blue bucket.
+child|English|I will show it to my teddy.
+woman|English|That will make teddy happy.
+man|English|It is a good leaf for a good day.
+old_lady|English|A simple day can be the best day.
+old_man|English|Yes, and tomorrow we can come again.
+narrator_male|English|They waved to the park, and the park seemed to wave back.

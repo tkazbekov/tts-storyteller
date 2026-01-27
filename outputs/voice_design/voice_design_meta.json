@@ -1,0 +1,50 @@
+[
+  {
+    "id": "woman",
+    "language": "English",
+    "instruction": "Adult woman, warm and confident with a natural, human delivery. Use smooth phrasing, gentle emotional warmth, and subtle expressive variation. Avoid robotic cadence; keep the tone friendly, clear, and conversational, with soft consonants and a steady pace.",
+    "sample_text": "It is a bright morning, and the park is waiting for us. Let us walk slowly and enjoy the breeze. We have time to notice every flower.",
+    "ref_audio": "outputs/voice_design/woman.wav",
+    "ref_text": "It is a bright morning, and the park is waiting for us. Let us walk slowly and enjoy the breeze. We have time to notice every flower."
+  },
+  {
+    "id": "man",
+    "language": "English",
+    "instruction": "Adult man, steady and calm, brighter tone (less deep), with relaxed cadence and friendly energy. Speak clearly with a light, open timbre and natural rhythm; avoid a heavy or gravelly sound.",
+    "sample_text": "We have plenty of time, and the day feels easy. Let us keep going at this pace. The path ahead looks calm and clear.",
+    "ref_audio": "outputs/voice_design/man.wav",
+    "ref_text": "We have plenty of time, and the day feels easy. Let us keep going at this pace. The path ahead looks calm and clear."
+  },
+  {
+    "id": "child",
+    "language": "English",
+    "instruction": "Curious child, bright tone, slightly calmer and less hyper. Keep gentle excitement and a playful, friendly sound, but avoid shrillness. Use short, clear phrases with natural childlike rhythm.",
+    "sample_text": "Can we stop and look at the ducks? I want to count them with my little fingers. The water is shiny and blue.",
+    "ref_audio": "outputs/voice_design/child.wav",
+    "ref_text": "Can we stop and look at the ducks? I want to count them with my little fingers. The water is shiny and blue."
+  },
+  {
+    "id": "old_man",
+    "language": "English",
+    "instruction": "Elderly man, clearly old. Softer voice, slower pace, gentle rasp, and a touch of breathiness. Sound kind and reflective, with careful articulation and a warm, lived-in quality.",
+    "sample_text": "I have watched the seasons change for many years, and each one brings a new story. The wind has a memory, if you listen closely. Time moves softly when you are patient.",
+    "ref_audio": "outputs/voice_design/old_man.wav",
+    "ref_text": "I have watched the seasons change for many years, and each one brings a new story. The wind has a memory, if you listen closely. Time moves softly when you are patient."
+  },
+  {
+    "id": "old_lady",
+    "language": "English",
+    "instruction": "Elderly woman, clearly old. Kind and composed, more breathy, slower cadence, warm smile in the voice. Speak gently and patiently, with soft edges and a comforting tone.",
+    "sample_text": "Come close, dear; let me share a gentle story from long ago. The days were slower then, and the nights were kind. We learned to listen and to care.",
+    "ref_audio": "outputs/voice_design/old_lady.wav",
+    "ref_text": "Come close, dear; let me share a gentle story from long ago. The days were slower then, and the nights were kind. We learned to listen and to care."
+  },
+  {
+    "id": "narrator_male",
+    "language": "English",
+    "instruction": "Male narrator, middle-aged, pleasant and steady, clear diction. Storybook warmth with smooth pacing, confident but calm, and subtle expressive nuance. Keep narration cohesive and easy to follow.",
+    "sample_text": "Our story begins in a small town by the sea, where the mornings are calm and the days are gentle. The people there speak softly and walk with care. It is a place that feels safe and warm.",
+    "ref_audio": "outputs/voice_design/narrator_male.wav",
+    "ref_text": "Our story begins in a small town by the sea, where the mornings are calm and the days are gentle. The people there speak softly and walk with care. It is a place that feels safe and warm."
+  }
+]

@@ -1,0 +1,42 @@
+narrator_male|English|Once upon a calm and cozy evening, when the sky turned from bright blue to gentle purple, a little town slowly prepared for sleep. Windows glowed warmly, pets curled into balls, and the air felt soft like a blanket.
+narrator_male|English|The stars popped out one by one, twinkling like tiny night lights, and the moon rose high, round and friendly, smiling down at everything below.
+narrator_male|English|In a small house near the edge of the town lived a young child named Milo. Milo loved bedtime, because bedtime meant pajamas, cuddles, and wonderful thoughts.
+child|English|Why does the sky get dark?
+narrator_male|English|Milo asked while rubbing his eyes and looking out the window.
+woman|English|So the world can rest and dream.
+narrator_male|English|His mother smiled and pulled the curtains just a little, letting the moonlight slip into the room.
+narrator_male|English|The moonlight danced on the walls, making soft shapes that looked like animals and clouds.
+child|English|I see a bunny.
+narrator_male|English|Milo giggled, then yawned a big sleepy yawn.
+narrator_male|English|Outside, in the quiet garden, something magical shimmered into view. A tiny boat made of silver light gently floated above the flowers.
+narrator_male|English|The boat hummed a sleepy tune and slowly rose higher, glowing brighter as it drifted toward Milo’s window.
+child|English|Mom, there is a shiny boat.
+woman|English|That must be a dream boat, come to take you on a gentle journey.
+narrator_male|English|Milo felt warm and safe. He closed his eyes, hugged his blanket, and suddenly felt lighter than air.
+narrator_male|English|When he opened his eyes again, he was sitting inside the moon boat, wrapped in soft starlight.
+narrator_male|English|The boat floated up into the sky, smooth and slow, like rocking in a cradle.
+narrator_male|English|They passed fluffy clouds shaped like sheep, turtles, and pillows.
+child|English|The clouds look sleepy.
+narrator_male|English|Stars sparkled all around, blinking kindly as the boat glided past.
+narrator_male|English|Soon, the moon grew bigger and brighter, until it filled the sky like a glowing playground.
+narrator_male|English|On the moon stood an old man with a long silver beard, sweeping moon dust into shining piles.
+old_man|English|Good evening, little dreamer.
+narrator_male|English|Milo waved shyly and smiled.
+child|English|Hello.
+narrator_male|English|Nearby, an old lady hummed a gentle song while planting tiny stars into the moon ground.
+old_lady|English|These stars help children sleep peacefully.
+narrator_male|English|She handed Milo a warm star cookie that sparkled softly.
+narrator_male|English|Milo took a small bite, and it tasted like kindness and calm.
+narrator_male|English|The moon felt quiet and happy, filled with soft light and slow breaths.
+narrator_male|English|After a while, the moon boat hummed again, ready to go home.
+child|English|I feel very sleepy.
+narrator_male|English|The old man and old lady waved gently as the boat drifted away.
+old_man|English|Sweet dreams.
+old_lady|English|Sleep softly.
+narrator_male|English|The boat sailed back through the sky, past the stars and clouds, slower and slower.
+narrator_male|English|Soon, Milo felt his bed beneath him again, cozy and warm.
+narrator_male|English|The moonlight rested quietly on the floor, and the room was peaceful.
+woman|English|Good night, Milo.
+child|English|Good night, moon.
+narrator_male|English|Milo closed his eyes and drifted into sleep, dreaming of moon boats, friendly stars, and gentle songs.
+narrator_male|English|All through the night, the moon watched over him, shining softly until the sun was ready to wake the world again.

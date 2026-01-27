@@ -1,0 +1,344 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Qwen3-TTS Home API",
+    "version": "0.1.0",
+    "description": "Local API for managing voices, story templates, and TTS generation."
+  },
+  "servers": [
+    { "url": "http://localhost:8000" }
+  ],
+  "paths": {
+    "/voices": {
+      "get": {
+        "summary": "List all available voices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Voice" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/{voiceId}": {
+      "get": {
+        "summary": "Get voice details by ID",
+        "parameters": [
+          { "$ref": "#/components/parameters/voiceId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Voice" }
+              }
+            }
+          },
+          "404": { "description": "Voice not found" }
+        }
+      }
+    },
+    "/stories": {
+      "get": {
+        "summary": "List all story IDs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new story template",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "409": { "description": "Story already exists" }
+        }
+      }
+    },
+    "/stories/{storyId}": {
+      "get": {
+        "summary": "Get story template by ID",
+        "parameters": [
+          { "$ref": "#/components/parameters/storyId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+              }
+            }
+          },
+          "404": { "description": "Story not found" }
+        }
+      },
+      "put": {
+        "summary": "Replace an existing story template",
+        "parameters": [
+          { "$ref": "#/components/parameters/storyId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "404": { "description": "Story not found" }
+        }
+      }
+    },
+    "/stories/{storyId}/render": {
+      "post": {
+        "summary": "Resolve roles to voices for a story",
+        "parameters": [
+          { "$ref": "#/components/parameters/storyId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ResolvedLine" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Resolution error" },
+          "404": { "description": "Story not found" }
+        }
+      }
+    },
+    "/stories/{storyId}/generate": {
+      "post": {
+        "summary": "Start audio generation for a story",
+        "parameters": [
+          { "$ref": "#/components/parameters/storyId" }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GenerateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Job" }
+              }
+            }
+          },
+          "404": { "description": "Story not found" }
+        }
+      }
+    },
+    "/jobs/{jobId}": {
+      "get": {
+        "summary": "Get job status by ID",
+        "parameters": [
+          { "$ref": "#/components/parameters/jobId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Job" }
+              }
+            }
+          },
+          "404": { "description": "Job not found" }
+        }
+      }
+    },
+    "/audio/stories/{storyId}/full.wav": {
+      "get": {
+        "summary": "Download the concatenated audio file for a story",
+        "parameters": [
+          { "$ref": "#/components/parameters/storyId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "audio/wav": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": { "description": "Audio not found" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "voiceId": {
+        "name": "voiceId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" }
+      },
+      "storyId": {
+        "name": "storyId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" }
+      },
+      "jobId": {
+        "name": "jobId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" }
+      }
+    },
+    "schemas": {
+      "Voice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "promptPath": { "type": "string", "nullable": true },
+          "refAudioPath": { "type": "string", "nullable": true }
+        }
+      },
+      "Role": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["roleId", "name"],
+        "properties": {
+          "roleId": { "type": "integer", "minimum": 0 },
+          "name": { "type": "string" },
+          "notes": { "type": "string", "nullable": true }
+        }
+      },
+      "StoryLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "roleId", "line"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 0 },
+          "roleId": { "type": "integer", "minimum": 0 },
+          "line": { "type": "string" },
+          "extra": { "type": "string", "nullable": true },
+          "actorId": { "type": "string", "nullable": true }
+        }
+      },
+      "StoryTemplate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schemaVersion", "title", "defaultVoiceId", "roles", "lines"],
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "title": { "type": "string" },
+          "defaultVoiceId": { "type": "string" },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Role" }
+          },
+          "casting": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoryLine" }
+          }
+        }
+      },
+      "ResolvedLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "roleId", "voiceId", "line"],
+        "properties": {
+          "id": { "type": "integer" },
+          "roleId": { "type": "integer" },
+          "voiceId": { "type": "string" },
+          "line": { "type": "string" },
+          "extra": { "type": "string", "nullable": true }
+        }
+      },
+      "GenerateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "concat": { "type": "boolean", "default": false },
+          "concatOut": { "type": "string", "nullable": true }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "status": { "type": "string", "enum": ["queued", "running", "succeeded", "failed"] },
+          "storyId": { "type": "string", "nullable": true },
+          "message": { "type": "string", "nullable": true },
+          "outputPath": { "type": "string", "nullable": true },
+          "requestParams": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          }
+        }
+      }
+    }
+  }
+}

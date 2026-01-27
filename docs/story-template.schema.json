@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/qwen3-tts/story-template.schema.json",
+  "title": "StoryTemplate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "title", "defaultVoiceId", "roles", "lines"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version for forward compatibility."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "defaultVoiceId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Fallback voice prompt ID used when a role is not cast."
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/role" },
+      "description": "Story-specific roles. Stories are authored by role, not voice."
+    },
+    "casting": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "propertyNames": {
+        "pattern": "^[0-9]+$"
+      },
+      "description": "Optional map of roleId -> voiceId. If missing, defaultVoiceId is used."
+    },
+    "lines": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/line" }
+    }
+  },
+  "$defs": {
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roleId", "name"],
+      "properties": {
+        "roleId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional author notes for the role."
+        }
+      }
+    },
+    "line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "roleId", "line"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "roleId": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must match a roleId in roles."
+        },
+        "line": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extra": {
+          "type": "string",
+          "description": "Optional performance hint (e.g., very angry, whispering)."
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional per-line override voice prompt ID."
+        }
+      }
+    }
+  }
+}

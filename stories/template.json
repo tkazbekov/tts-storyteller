@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "title": "Sunny Morning",
+  "defaultVoiceId": "narrator_male",
+  "roles": [
+    { "roleId": 0, "name": "Narrator" },
+    { "roleId": 1, "name": "Woman" },
+    { "roleId": 2, "name": "Man" },
+    { "roleId": 3, "name": "Child" }
+  ],
+  "casting": {
+    "0": "narrator_male",
+    "1": "woman",
+    "2": "man",
+    "3": "child"
+  },
+  "lines": [
+    {
+      "id": 0,
+      "roleId": 0,
+      "line": "It was a sunny morning in a small town, and the air smelled like fresh bread."
+    },
+    {
+      "id": 1,
+      "roleId": 1,
+      "line": "Let us take the easy path today, the one with the flowers."
+    },
+    {
+      "id": 2,
+      "roleId": 2,
+      "line": "Yes, and we can count the butterflies as we go."
+    },
+    {
+      "id": 3,
+      "roleId": 3,
+      "line": "Can I bring my little blue bucket?",
+      "extra": "curious, excited"
+    }
+  ]
+}

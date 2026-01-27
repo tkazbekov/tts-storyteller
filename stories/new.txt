@@ -1,0 +1,44 @@
+narrator_male|English|Once upon a very gentle night, when the day had tiptoed away and the sky wore its softest blue, a sleepy village rested beside a quiet meadow. The houses breathed slowly, the trees whispered good night, and even the crickets chirped in slow, cozy rhythms.
+narrator_male|English|In one of those houses lived a cheerful child named Luna. Luna loved soft socks, round pillows, and listening to the sounds that came just before sleep.
+child|English|The night feels fluffy.
+narrator_male|English|Luna said as she snuggled deeper under her blanket.
+woman|English|That is the night giving you a hug.
+narrator_male|English|Luna smiled. Her mother dimmed the lamp until the room glowed like a tiny sunset.
+narrator_male|English|Outside, the meadow shimmered. Fireflies floated slowly, blinking like tiny stars that forgot to stay in the sky.
+narrator_male|English|Near the edge of the meadow stood a very old oak tree. Its branches were wide and strong, and tonight, something special was happening there.
+narrator_male|English|A small door at the base of the tree quietly opened, and out stepped a friendly old lady with silver hair tied in a bun.
+old_lady|English|It is time to check the dreams.
+narrator_male|English|She carried a basket filled with glowing bubbles. Each bubble held a dream inside.
+narrator_male|English|With a gentle tap, she released the bubbles into the air. They floated toward the village, drifting through open windows.
+narrator_male|English|One glowing bubble slipped into Luna’s room and popped with a soft sparkle.
+narrator_male|English|Luna’s eyes grew heavy, and suddenly she found herself standing in the meadow, barefoot on warm grass.
+child|English|I am not sleepy anymore.
+narrator_male|English|The old oak tree smiled, yes trees can smile, and its branches slowly lowered like a ladder.
+narrator_male|English|Luna climbed up, step by step, feeling safe and calm.
+narrator_male|English|At the top of the tree was a wide wooden platform where a friendly man in a patchwork coat waited.
+man|English|Welcome, Luna. I am the Keeper of Quiet Sounds.
+narrator_male|English|Around him were jars filled with sounds. Gentle rain, soft wind, purring cats, and slow ocean waves.
+narrator_male|English|The man opened a jar, and a soft humming sound floated out, wrapping around Luna like a blanket.
+child|English|That sounds nice.
+narrator_male|English|Together, they listened. The meadow below slowed. The fireflies blinked more softly. The stars leaned closer to hear.
+narrator_male|English|Then the old lady appeared again, placing a tiny dream hat on Luna’s head. It was light as a feather.
+old_lady|English|This will help you remember the calm.
+narrator_male|English|Luna felt warm from her toes to her ears.
+narrator_male|English|Suddenly, the platform gently floated away from the tree, turning into a slow-moving cloud.
+narrator_male|English|The cloud drifted across the sky, passing over rivers that whispered and hills that sighed.
+narrator_male|English|Below, animals were getting ready for bed. Bears curled up. Birds tucked in their wings. Even the fish rested.
+child|English|Everyone is sleepy.
+narrator_male|English|The cloud rocked gently, back and forth, like a cradle.
+narrator_male|English|Stars began to hum together, making a soft lullaby.
+narrator_male|English|Luna felt her eyes closing, but the dream was not finished yet.
+narrator_male|English|The cloud slowly lowered, drifting back toward the village and into Luna’s room.
+narrator_male|English|The patchwork man waved from the sky.
+man|English|Rest well, little listener.
+narrator_male|English|The old lady smiled kindly.
+old_lady|English|Sweet and quiet dreams.
+narrator_male|English|Luna was back in her bed, the blanket warm, the room peaceful.
+woman|English|Good night, my star.
+child|English|Good night, meadow.
+narrator_male|English|Luna sighed a happy sigh and drifted into deep sleep.
+narrator_male|English|All through the night, the oak tree stood watch, the jars of sounds stayed sealed, and the dream bubbles floated gently where they were needed.
+narrator_male|English|The moon glowed softly, the stars kept humming, and the whole world rested together, slow and safe, until morning light was ready to return.
