@@ -86,12 +86,31 @@ class ResolvedLine(BaseModel):
     extra: str | None = Field(None, description="Performance hint")
 
 
+class VoiceConfig(BaseModel):
+    """Voice configuration for creation/update."""
+
+    id: str = Field(..., min_length=1, description="Voice identifier")
+    language: str = Field(..., min_length=1, description="Language for this voice")
+    instruction: str = Field(..., min_length=1, description="Voice instruction/prompt")
+    sample_text: str = Field(..., min_length=1, description="Sample text for voice generation")
+
+
 class Voice(BaseModel):
     """A voice definition."""
 
     id: str = Field(..., min_length=1)
+    language: str = Field(..., description="Language for this voice")
+    instruction: str = Field(..., description="Voice instruction/prompt")
+    sample_text: str | None = Field(None, description="Sample text for this voice")
     promptPath: str | None = Field(None, description="Path to prompt file")
     refAudioPath: str | None = Field(None, description="Path to reference audio")
+
+
+class VoicePool(BaseModel):
+    """A pool of voices grouped by theme."""
+
+    name: str = Field(..., min_length=1, description="Pool name")
+    voiceIds: list[str] = Field(..., description="List of voice IDs in this pool")
 
 
 class GenerateRequest(BaseModel):
@@ -105,9 +124,10 @@ class Job(BaseModel):
     """A generation job."""
 
     id: str = Field(..., description="Job identifier")
-    type: str = Field(..., description="Job type (e.g., 'generate')")
+    type: str = Field(..., description="Job type (e.g., 'generate', 'voice_generate')")
     status: str = Field(..., description="Job status: queued, running, succeeded, failed")
     storyId: str | None = Field(None, description="Associated story ID")
+    voiceId: str | None = Field(None, description="Associated voice ID")
     message: str | None = Field(None, description="Status message or error")
     outputPath: str | None = Field(None, description="Path to generated audio file")
     requestParams: dict[str, Any] | None = Field(

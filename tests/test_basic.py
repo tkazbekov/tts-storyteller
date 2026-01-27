@@ -1,7 +1,6 @@
 """Basic tests to verify the test infrastructure works."""
 
 
-
 def test_imports():
     """Test that main modules can be imported."""
     from lib import generation, models, paths, resolution, storage, validation

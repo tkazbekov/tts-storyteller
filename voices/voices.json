@@ -34,5 +34,11 @@
     "language": "English",
     "instruction": "Male narrator, middle-aged, pleasant and steady, clear diction. Storybook warmth with smooth pacing, confident but calm, and subtle expressive nuance. Keep narration cohesive and easy to follow.",
     "sample_text": "Our story begins in a small town by the sea, where the mornings are calm and the days are gentle. The people there speak softly and walk with care. It is a place that feels safe and warm."
+  },
+  {
+    "id": "old_man2",
+    "language": "English",
+    "instruction": "Elderly man with a warm, steady voice. Slightly gravelly texture, slower pace, and thoughtful delivery. Speak with gentle authority and lived-in wisdom. Use natural pauses, clear articulation, and a calm, reassuring tone. Avoid exaggerated frailty or comedy.",
+    "sample_text": "I remember when this road was just dirt and dust. We took our time back then, and somehow the days felt longer. Sit for a moment\u2014there\u2019s no need to rush."
   }
 ]

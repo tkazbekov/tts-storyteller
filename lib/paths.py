@@ -24,9 +24,29 @@ def get_stories_dir() -> Path:
     return PROJECT_ROOT / "stories"
 
 
+def get_voices_dir() -> Path:
+    """Get the voices directory path."""
+    return PROJECT_ROOT / "voices"
+
+
 def get_voices_config_path() -> Path:
     """Get the voices configuration JSON file path."""
-    return PROJECT_ROOT / "voices" / "voices.json"
+    return get_voices_dir() / "voices.json"
+
+
+def get_pools_config_path() -> Path:
+    """Get the pools configuration JSON file path."""
+    return get_voices_dir() / "pools.json"
+
+
+def get_voice_metadata_path() -> Path:
+    """Get the voice metadata JSON file path."""
+    return get_voices_dir() / ".voice_metadata.json"
+
+
+def get_voice_ref_audio_path(voice_id: str) -> Path:
+    """Get the path to reference audio for a voice."""
+    return get_voice_design_dir() / f"{voice_id}.wav"
 
 
 def get_prompts_dir() -> Path:

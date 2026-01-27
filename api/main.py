@@ -13,24 +13,49 @@ from fastapi.responses import FileResponse
 from qwen_tts import Qwen3TTSModel
 
 from lib.generation import generate_story_audio
-from lib.models import GenerateRequest, Job, ResolvedLine, StoryTemplate, Voice
+from lib.models import (
+    GenerateRequest,
+    Job,
+    ResolvedLine,
+    StoryTemplate,
+    Voice,
+    VoiceConfig,
+    VoicePool,
+)
 from lib.paths import get_story_full_audio_path, get_story_output_dir
 from lib.resolution import resolve_story
 from lib.storage import (
+    delete_voice_config,
+    get_all_pools,
     get_available_voice_ids,
     get_voice_info,
+    get_voices_by_pool,
     list_stories,
+    load_pools_config,
     load_story,
+    load_voice_config,
+    remove_voice_from_all_pools,
+    save_pools_config,
     save_story,
+    save_voice_config,
     voice_has_prompt,
 )
 from lib.validation import validate_story
+from lib.voice_generation import generate_voice
+from lib.voice_metadata import should_regenerate_voice
 from scripts.common import load_tts_model
 
 # Global model cache
 _model_cache: Qwen3TTSModel | None = None
+_voice_design_model_cache: Qwen3TTSModel | None = None
 _model_config: dict[str, str] = {
     "model": os.getenv("QWEN3_TTS_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-Base"),
+    "device": os.getenv("QWEN3_TTS_DEVICE", "cuda:0"),
+    "dtype": os.getenv("QWEN3_TTS_DTYPE", "bfloat16"),
+    "attn": os.getenv("QWEN3_TTS_ATTN", "auto"),
+}
+_voice_design_model_config: dict[str, str] = {
+    "model": os.getenv("QWEN3_TTS_VOICE_DESIGN_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"),
     "device": os.getenv("QWEN3_TTS_DEVICE", "cuda:0"),
     "dtype": os.getenv("QWEN3_TTS_DTYPE", "bfloat16"),
     "attn": os.getenv("QWEN3_TTS_ATTN", "auto"),
@@ -38,7 +63,7 @@ _model_config: dict[str, str] = {
 
 
 def get_or_load_model() -> Qwen3TTSModel:
-    """Get cached model or load if not cached."""
+    """Get cached Base model or load if not cached."""
     global _model_cache
     if _model_cache is None:
         _model_cache = load_tts_model(
@@ -50,12 +75,29 @@ def get_or_load_model() -> Qwen3TTSModel:
     return _model_cache
 
 
+def get_or_load_voice_design_model() -> Qwen3TTSModel:
+    """Get cached VoiceDesign model or load if not cached."""
+    global _voice_design_model_cache
+    if _voice_design_model_cache is None:
+        _voice_design_model_cache = load_tts_model(
+            _voice_design_model_config["model"],
+            _voice_design_model_config["device"],
+            _voice_design_model_config["dtype"],
+            _voice_design_model_config["attn"],
+        )
+    return _voice_design_model_cache
+
+
 # In-memory job storage (keyed by job ID)
 JOBS: dict[str, Job] = {}
 
 # Track which story has an active job (running or queued)
 # Maps storyId -> jobId
 _story_active_jobs: dict[str, str] = {}
+
+# Track which voice has an active job (running or queued)
+# Maps voiceId -> jobId
+_voice_active_jobs: dict[str, str] = {}
 
 # Background task queue (simple single-worker queue)
 _job_queue: asyncio.Queue = asyncio.Queue()
@@ -78,64 +120,107 @@ async def process_job_queue():
 
             # Update status to running
             job.status = "running"
-            job.message = "Generating audio..."
 
-            # Track that this story is being processed
+            # Track active jobs
             if job.storyId:
                 _story_active_jobs[job.storyId] = job_id
+                job.message = "Generating audio..."
+            elif job.voiceId:
+                _voice_active_jobs[job.voiceId] = job_id
+                job.message = "Generating voice..."
 
             try:
-                # Validate storyId is present
-                if not job.storyId:
-                    raise ValueError("Job missing storyId")
+                if job.type == "voice_generate":
+                    # Voice generation job
+                    if not job.voiceId:
+                        raise ValueError("Job missing voiceId")
 
-                # Load story and resolve
-                story = load_story(job.storyId)
-                available_voices = get_available_voice_ids()
-                resolved_lines = resolve_story(story, available_voices)
+                    # Get voice config from request params
+                    request_params = job.requestParams or {}
+                    voice_config_dict = request_params.get("voice_config")
+                    if not voice_config_dict:
+                        raise ValueError("Job missing voice_config in requestParams")
 
-                # Get language from story template (defaults to "English")
-                language = story.language
+                    voice_config = VoiceConfig(**voice_config_dict)
 
-                # Get request parameters
-                request_params = job.requestParams or {}
-                concat = request_params.get("concat", True)
+                    # Get models
+                    voice_design_model = get_or_load_voice_design_model()
+                    base_model = get_or_load_model()
 
-                # Automatically use incremental generation if metadata exists
-                # Check if we have previous generation metadata
-                from lib.metadata import find_changed_indices, load_line_hashes
+                    # Generate voice in thread pool to avoid blocking event loop
+                    wav_path, prompt_path = await asyncio.to_thread(
+                        generate_voice,
+                        voice_id=job.voiceId,
+                        voice_config=voice_config,
+                        voice_design_model=voice_design_model,
+                        base_model=base_model,
+                        force_regenerate=False,
+                    )
 
-                regenerate_indices: set[int] | None = None
-                if load_line_hashes(job.storyId) is not None:
-                    # Metadata exists - use incremental generation
-                    changed_indices = find_changed_indices(job.storyId, resolved_lines, language)
-                    regenerate_indices = changed_indices
-                # If no metadata exists, regenerate_indices stays None (full generation)
+                    # Update voices.json
+                    save_voice_config(job.voiceId, voice_config)
 
-                # Get cached model
-                tts_model = get_or_load_model()
+                    # Update job with success
+                    job.status = "succeeded"
+                    job.message = "Voice generation completed"
+                    job.outputPath = str(prompt_path)
 
-                # Generate audio in thread pool to avoid blocking event loop
-                output_path = await asyncio.to_thread(
-                    generate_story_audio,
-                    resolved_lines=resolved_lines,
-                    story_id=job.storyId,
-                    tts_model=tts_model,
-                    language=language,
-                    concat=concat,
-                    regenerate_indices=regenerate_indices,
-                )
+                elif job.type == "generate":
+                    # Story generation job
+                    if not job.storyId:
+                        raise ValueError("Job missing storyId")
 
-                # Save metadata for future incremental generation
-                from lib.metadata import save_line_hashes
+                    # Load story and resolve
+                    story = load_story(job.storyId)
+                    available_voices = get_available_voice_ids()
+                    resolved_lines = resolve_story(story, available_voices)
 
-                save_line_hashes(job.storyId, resolved_lines, language)
+                    # Get language from story template (defaults to "English")
+                    language = story.language
 
-                # Update job with success
-                job.status = "succeeded"
-                job.message = "Generation completed"
-                # Store the path: file path if concatenated, directory path if not
-                job.outputPath = str(output_path)
+                    # Get request parameters
+                    request_params = job.requestParams or {}
+                    concat = request_params.get("concat", True)
+
+                    # Automatically use incremental generation if metadata exists
+                    # Check if we have previous generation metadata
+                    from lib.metadata import find_changed_indices, load_line_hashes
+
+                    regenerate_indices: set[int] | None = None
+                    if load_line_hashes(job.storyId) is not None:
+                        # Metadata exists - use incremental generation
+                        changed_indices = find_changed_indices(
+                            job.storyId, resolved_lines, language
+                        )
+                        regenerate_indices = changed_indices
+                    # If no metadata exists, regenerate_indices stays None (full generation)
+
+                    # Get cached model
+                    tts_model = get_or_load_model()
+
+                    # Generate audio in thread pool to avoid blocking event loop
+                    output_path = await asyncio.to_thread(
+                        generate_story_audio,
+                        resolved_lines=resolved_lines,
+                        story_id=job.storyId,
+                        tts_model=tts_model,
+                        language=language,
+                        concat=concat,
+                        regenerate_indices=regenerate_indices,
+                    )
+
+                    # Save metadata for future incremental generation
+                    from lib.metadata import save_line_hashes
+
+                    save_line_hashes(job.storyId, resolved_lines, language)
+
+                    # Update job with success
+                    job.status = "succeeded"
+                    job.message = "Generation completed"
+                    # Store the path: file path if concatenated, directory path if not
+                    job.outputPath = str(output_path)
+                else:
+                    raise ValueError(f"Unknown job type: {job.type}")
 
             except Exception as e:
                 # Update job with error
@@ -143,20 +228,25 @@ async def process_job_queue():
                 job.message = str(e)
 
             finally:
-                # Clear story tracking when job completes
+                # Clear tracking when job completes
                 if job.storyId and _story_active_jobs.get(job.storyId) == job_id:
                     _story_active_jobs.pop(job.storyId, None)
+                if job.voiceId and _voice_active_jobs.get(job.voiceId) == job_id:
+                    _voice_active_jobs.pop(job.voiceId, None)
                 _processing_job = None
                 _job_queue.task_done()
 
         except Exception as e:
             # Log error but continue processing
             print(f"Error processing job: {e}")
-            # Clear story tracking on error
+            # Clear tracking on error
             if _processing_job:
                 job = JOBS.get(_processing_job)
-                if job and job.storyId and _story_active_jobs.get(job.storyId) == _processing_job:
-                    _story_active_jobs.pop(job.storyId, None)
+                if job:
+                    if job.storyId and _story_active_jobs.get(job.storyId) == _processing_job:
+                        _story_active_jobs.pop(job.storyId, None)
+                    if job.voiceId and _voice_active_jobs.get(job.voiceId) == _processing_job:
+                        _voice_active_jobs.pop(job.voiceId, None)
             _processing_job = None
 
 
@@ -193,11 +283,19 @@ if _cors_origins:
 
 
 @app.get("/voices")
-def list_voices() -> list[Voice]:
-    """List all available voices."""
-    voice_ids = get_available_voice_ids()
-    voices = []
+def list_voices(pool: str | None = None) -> list[Voice]:
+    """
+    List all available voices, optionally filtered by pool.
 
+    Args:
+        pool: Optional pool name to filter voices
+    """
+    if pool:
+        voice_ids = set(get_voices_by_pool(pool))
+    else:
+        voice_ids = get_available_voice_ids()
+
+    voices = []
     for voice_id in sorted(voice_ids):
         info = get_voice_info(voice_id)
         if info:
@@ -207,7 +305,7 @@ def list_voices() -> list[Voice]:
 
 
 @app.get("/voices/{voiceId}")
-def get_voice(voiceId: str) -> Voice:
+def get_voice_endpoint(voiceId: str) -> Voice:
     """Get voice details by ID."""
     if not voice_has_prompt(voiceId):
         raise HTTPException(status_code=404, detail=f"Voice '{voiceId}' not found")
@@ -217,6 +315,212 @@ def get_voice(voiceId: str) -> Voice:
         raise HTTPException(status_code=404, detail=f"Voice '{voiceId}' not found")
 
     return Voice(**info)
+
+
+@app.post("/voices", status_code=202)
+def create_voice_endpoint(voice_config: VoiceConfig) -> Job:
+    """
+    Create a new voice.
+
+    Generates WAV and prompt files, updates voices.json.
+    Returns a job ID to track generation progress.
+    """
+    # Check if voice already exists
+    existing = load_voice_config(voice_config.id)
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Voice '{voice_config.id}' already exists")
+
+    # Check if job is already running for this voice
+    if voice_config.id in _voice_active_jobs:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Voice '{voice_config.id}' is already being generated",
+        )
+
+    # Create job
+    job_id = str(uuid.uuid4())
+    job = Job(
+        id=job_id,
+        type="voice_generate",
+        status="queued",
+        storyId=None,
+        voiceId=voice_config.id,
+        message="Queued for generation",
+        outputPath=None,
+        requestParams={"voice_config": voice_config.model_dump()},
+    )
+    JOBS[job_id] = job
+
+    # Queue job
+    _voice_active_jobs[voice_config.id] = job_id
+    _job_queue.put_nowait(job_id)
+
+    return job
+
+
+@app.put("/voices/{voiceId}")
+def update_voice_endpoint(voiceId: str, voice_config: VoiceConfig) -> Job | VoiceConfig:
+    """
+    Update an existing voice configuration.
+
+    If config changed, triggers regeneration job.
+    Otherwise, just updates voices.json.
+    """
+    # Check if voice exists
+    existing = load_voice_config(voiceId)
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Voice '{voiceId}' not found")
+
+    # Ensure IDs match
+    if voice_config.id != voiceId:
+        raise HTTPException(status_code=400, detail="voiceId in path must match id in body")
+
+    # Check if regeneration is needed
+    needs_regeneration = should_regenerate_voice(voiceId, voice_config)
+
+    # Update voices.json immediately
+    save_voice_config(voiceId, voice_config)
+
+    # If config changed, trigger regeneration job
+    if needs_regeneration:
+        # Check if job is already running
+        if voiceId in _voice_active_jobs:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Voice '{voiceId}' is already being generated",
+            )
+
+        # Create regeneration job
+        job_id = str(uuid.uuid4())
+        job = Job(
+            id=job_id,
+            type="voice_generate",
+            status="queued",
+            storyId=None,
+            voiceId=voiceId,
+            message="Queued for regeneration",
+            outputPath=None,
+            requestParams={"voice_config": voice_config.model_dump()},
+        )
+        JOBS[job_id] = job
+
+        # Queue job
+        _voice_active_jobs[voiceId] = job_id
+        _job_queue.put_nowait(job_id)
+
+        return job
+
+    # No regeneration needed, return updated config
+    return voice_config
+
+
+@app.delete("/voices/{voiceId}", status_code=204)
+def delete_voice_endpoint(voiceId: str) -> None:
+    """
+    Delete a voice.
+
+    Removes from voices.json and all pools.
+    Does not delete WAV or prompt files.
+    """
+    # Check if voice exists
+    existing = load_voice_config(voiceId)
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Voice '{voiceId}' not found")
+
+    # Check if job is running
+    if voiceId in _voice_active_jobs:
+        raise HTTPException(
+            status_code=409, detail=f"Voice '{voiceId}' is currently being generated"
+        )
+
+    # Remove from voices.json
+    delete_voice_config(voiceId)
+
+    # Remove from all pools
+    remove_voice_from_all_pools(voiceId)
+
+
+@app.get("/voices/pools")
+def list_pools_endpoint() -> list[str]:
+    """List all available voice pools."""
+    return sorted(get_all_pools())
+
+
+@app.get("/voices/pools/{poolName}")
+def get_pool_endpoint(poolName: str) -> list[Voice]:
+    """Get all voices in a pool."""
+    voice_ids = get_voices_by_pool(poolName)
+    if not voice_ids:
+        raise HTTPException(status_code=404, detail=f"Pool '{poolName}' not found")
+
+    voices = []
+    for voice_id in sorted(voice_ids):
+        info = get_voice_info(voice_id)
+        if info:
+            voices.append(Voice(**info))
+
+    return voices
+
+
+@app.post("/voices/pools/{poolName}", status_code=201)
+def create_pool_endpoint(poolName: str, pool: VoicePool) -> VoicePool:
+    """Create a new pool."""
+    if pool.name != poolName:
+        raise HTTPException(status_code=400, detail="poolName in path must match name in body")
+
+    pools = load_pools_config()
+    if poolName in pools:
+        raise HTTPException(status_code=409, detail=f"Pool '{poolName}' already exists")
+
+    # Validate voice IDs exist
+    available_voices = get_available_voice_ids()
+    for voice_id in pool.voiceIds:
+        if voice_id not in available_voices:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Voice '{voice_id}' not found in available voices",
+            )
+
+    pools[poolName] = pool.voiceIds
+    save_pools_config(pools)
+
+    return pool
+
+
+@app.put("/voices/pools/{poolName}")
+def update_pool_endpoint(poolName: str, pool: VoicePool) -> VoicePool:
+    """Update an existing pool."""
+    if pool.name != poolName:
+        raise HTTPException(status_code=400, detail="poolName in path must match name in body")
+
+    pools = load_pools_config()
+    if poolName not in pools:
+        raise HTTPException(status_code=404, detail=f"Pool '{poolName}' not found")
+
+    # Validate voice IDs exist
+    available_voices = get_available_voice_ids()
+    for voice_id in pool.voiceIds:
+        if voice_id not in available_voices:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Voice '{voice_id}' not found in available voices",
+            )
+
+    pools[poolName] = pool.voiceIds
+    save_pools_config(pools)
+
+    return pool
+
+
+@app.delete("/voices/pools/{poolName}", status_code=204)
+def delete_pool_endpoint(poolName: str) -> None:
+    """Delete a pool."""
+    pools = load_pools_config()
+    if poolName not in pools:
+        raise HTTPException(status_code=404, detail=f"Pool '{poolName}' not found")
+
+    del pools[poolName]
+    save_pools_config(pools)
 
 
 @app.get("/stories")
@@ -364,6 +668,7 @@ def generate_story_endpoint(
         type="generate",
         status="queued",
         storyId=storyId,
+        voiceId=None,
         message="Job queued",
         outputPath=None,
         requestParams=request_params,

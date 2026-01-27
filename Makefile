@@ -35,6 +35,10 @@ lint: check-venv ## Run linter
 	@bash -c 'source env.sh && command -v ruff >/dev/null 2>&1 || { echo "Error: ruff not found. Run '\''make dev-install'\'' first."; exit 1; }'
 	bash -c 'source env.sh && ruff check .'
 
+lint-fix: check-venv ## Run linter
+	@bash -c 'source env.sh && command -v ruff >/dev/null 2>&1 || { echo "Error: ruff not found. Run '\''make dev-install'\'' first."; exit 1; }'
+	bash -c 'source env.sh && ruff check . --fix'
+
 format: check-venv ## Format code
 	@bash -c 'source env.sh && command -v ruff >/dev/null 2>&1 || { echo "Error: ruff not found. Run '\''make dev-install'\'' first."; exit 1; }'
 	bash -c 'source env.sh && ruff format .'
