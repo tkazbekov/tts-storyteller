@@ -88,7 +88,10 @@ See `make help` for all available commands.
 ```
 qwen3-tts/
   api/              # FastAPI application
-    main.py         # API endpoints and job system
+    app.py          # FastAPI app setup
+    main.py         # API entrypoint
+    routes/         # API route modules
+  services/         # API service layer
   lib/              # Reusable library modules
     paths.py        # Path utilities
     models.py       # Pydantic models
@@ -229,9 +232,14 @@ The FastAPI server provides a full REST API for story management and generation.
 
 ### Endpoints
 
+**Health:**
+- `GET /health` - Simple health check
+
 **Voices:**
 - `GET /voices` - List all available voices
 - `GET /voices/{voiceId}` - Get voice details
+- `GET /voices/pools` - List voice pools
+- `GET /voices/pools/{poolName}` - Get voices in a pool
 
 **Stories:**
 - `GET /stories` - List all story IDs
@@ -246,6 +254,8 @@ The FastAPI server provides a full REST API for story management and generation.
 
 **Audio:**
 - `GET /audio/stories/{storyId}/full.wav` - Download concatenated audio
+- `GET /audio/stories/{storyId}/files` - List per-line audio files
+- `GET /audio/stories/{storyId}/files/{filename}` - Download a specific line audio file
 
 ### Interactive API docs
 
@@ -272,6 +282,7 @@ curl http://localhost:8000/stories/my_story/render
 curl -X POST http://localhost:8000/stories/my_story/generate \
   -H "Content-Type: application/json" \
   -d '{"concat": true}'
+# Note: concat defaults to true if omitted.
 # Returns: {"id": "...", "status": "queued", ...}
 
 # 4. Poll job status
@@ -449,6 +460,8 @@ Generation runs asynchronously:
 2. Job status: `queued` → `running` → `succeeded`/`failed`
 3. Poll `GET /jobs/{jobId}` for status updates
 4. On success, download audio via `GET /audio/stories/{storyId}/full.wav`
+
+Job responses include timestamps: `createdAt`, `startedAt`, and `finishedAt` (ISO 8601).
 
 ## Development tools
 
