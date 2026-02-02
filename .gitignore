@@ -54,3 +54,7 @@ outputs/voice_design/*.wav
 # OS
 .DS_Store
 Thumbs.db
+
+# runtime
+outputs/api.log
+
