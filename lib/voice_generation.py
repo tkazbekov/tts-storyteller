@@ -6,8 +6,8 @@ from qwen_tts import Qwen3TTSModel
 
 from lib.models import VoiceConfig
 from lib.paths import get_prompt_path, get_voice_ref_audio_path
+from lib.runtime import save_prompt, save_wav
 from lib.voice_metadata import save_voice_metadata, should_regenerate_voice
-from scripts.common import save_prompt, save_wav
 
 
 def generate_voice_wav(

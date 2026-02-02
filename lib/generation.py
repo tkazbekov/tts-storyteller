@@ -8,7 +8,7 @@ from qwen_tts import Qwen3TTSModel
 from lib.incremental import get_existing_audio_files
 from lib.models import ResolvedLine
 from lib.paths import get_prompt_path, get_story_output_dir
-from scripts.common import load_prompt, load_tts_model, save_wav
+from lib.runtime import load_prompt, load_tts_model, save_wav
 
 
 def generate_story_audio(
