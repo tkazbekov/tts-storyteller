@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Generate a multi-voice story from a JSON template."""
+"""Generate a multi-voice story from a stored template."""
 
 import argparse
 import sys
 
+from lib.env import load_env
 from lib.generation import generate_story_audio
+from lib.repositories import get_story_repository, get_voice_repository
 from lib.resolution import resolve_story
-from lib.storage import get_available_voice_ids, load_story
 
 DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+
+
+load_env()
 
 
 def main() -> int:
@@ -27,11 +31,11 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        # Load story
-        story = load_story(args.story)
+        # Load story via repository
+        story = get_story_repository().get(args.story)
 
         # Resolve roles to voices
-        available_voices = get_available_voice_ids()
+        available_voices = get_voice_repository().get_available_ids()
         resolved_lines = resolve_story(story, available_voices)
 
         # Generate audio
@@ -54,6 +58,9 @@ def main() -> int:
         return 0
 
     except FileNotFoundError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+    except KeyError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
     except ValueError as e:

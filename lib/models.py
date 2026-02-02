@@ -1,6 +1,7 @@
 """Pydantic models for API data structures."""
 
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,6 +40,14 @@ class StoryTemplate(BaseModel):
     Example casting: {"0": "narrator_male", "1": "woman"} maps roleId 0 to narrator_male, roleId 1 to woman.
     """
 
+    id: UUID | None = Field(
+        None,
+        description="Unique story identifier (UUID). Set by server on creation.",
+    )
+    slug: str | None = Field(
+        None,
+        description="URL-friendly identifier derived from title. Set by server on creation.",
+    )
     schemaVersion: Literal[1] = Field(1, description="Schema version")
     title: str = Field(..., min_length=1, description="Story title")
     language: str = Field(
@@ -67,6 +76,14 @@ class StoryTemplate(BaseModel):
         if not v:
             raise ValueError("must not be empty")
         return v
+
+
+class StorySummary(BaseModel):
+    """Summary of a story for list endpoints."""
+
+    id: UUID | None = Field(None, description="Unique story identifier (UUID)")
+    slug: str = Field(..., description="URL-friendly identifier")
+    title: str = Field(..., description="Story title")
 
 
 class ResolvedLine(BaseModel):

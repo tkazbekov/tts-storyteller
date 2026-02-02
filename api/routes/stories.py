@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
+import uuid
 
 from fastapi import APIRouter, HTTPException
 
-from lib.models import GenerateRequest, Job, ResolvedLine, StoryTemplate
+from lib.models import GenerateRequest, Job, ResolvedLine, StorySummary, StoryTemplate
+from lib.repositories import get_story_repository, get_voice_repository
 from lib.resolution import resolve_story
-from lib.storage import get_available_voice_ids, list_stories, load_story, save_story
 from lib.validation import validate_story
 from services.jobs import enqueue_story_job, get_active_story_job
 
@@ -16,9 +17,30 @@ router = APIRouter()
 
 
 @router.get("/stories")
-def list_stories_endpoint() -> list[str]:
-    """List all story IDs."""
-    return list_stories()
+def list_stories_endpoint() -> list[StorySummary]:
+    """
+    List all stories.
+
+    Returns story summaries with id, slug, and title.
+    """
+    story_repo = get_story_repository()
+    story_ids = story_repo.list_ids()
+
+    summaries: list[StorySummary] = []
+    for slug in story_ids:
+        try:
+            story = story_repo.get(slug)
+            summaries.append(
+                StorySummary(
+                    id=story.id,
+                    slug=slug,
+                    title=story.title,
+                )
+            )
+        except KeyError:
+            continue
+
+    return summaries
 
 
 @router.post("/stories", status_code=201)
@@ -30,39 +52,51 @@ def create_story_endpoint(story: StoryTemplate) -> StoryTemplate:
     Resolution order: line.actorId → casting[roleId] → defaultVoiceId
 
     Example casting: {"0": "narrator_male", "1": "woman"} assigns roleId 0 to narrator_male, roleId 1 to woman.
+
+    Returns the story with server-generated `id` (UUID) and `slug` fields.
     """
     errors = validate_story(story.model_dump())
     if errors:
         raise HTTPException(status_code=400, detail={"errors": errors})
 
-    available_voices = get_available_voice_ids()
+    voice_repo = get_voice_repository()
+    available_voices = voice_repo.get_available_ids()
     if story.defaultVoiceId not in available_voices:
         raise HTTPException(
             status_code=400,
             detail=f"defaultVoiceId '{story.defaultVoiceId}' not found in available voices",
         )
 
-    story_id = re.sub(r"[^a-z0-9_-]", "", story.title.lower().replace(" ", "_"))
-    if not story_id:
-        story_id = "story"
+    # Generate slug from title
+    slug = re.sub(r"[^a-z0-9_-]", "", story.title.lower().replace(" ", "_"))
+    if not slug:
+        slug = "story"
 
-    try:
-        load_story(story_id)
-        raise HTTPException(status_code=409, detail=f"Story '{story_id}' already exists")
-    except FileNotFoundError:
-        pass
+    story_repo = get_story_repository()
+    if story_repo.exists(slug):
+        raise HTTPException(status_code=409, detail=f"Story '{slug}' already exists")
 
-    save_story(story_id, story)
+    # Assign server-generated id and slug
+    story.id = uuid.uuid4()
+    story.slug = slug
+
+    story_repo.save(slug, story)
     return story
 
 
-@router.get("/stories/{storyId}")
-def get_story_endpoint(storyId: str) -> StoryTemplate:
-    """Get story template by ID."""
+@router.get("/stories/{identifier}")
+def get_story_endpoint(identifier: str) -> StoryTemplate:
+    """
+    Get story template by ID or slug.
+
+    The identifier can be either:
+    - A UUID (e.g., "550e8400-e29b-41d4-a716-446655440000")
+    - A slug (e.g., "my_story_title")
+    """
     try:
-        return load_story(storyId)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found") from None
+        return get_story_repository().get(identifier)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Story '{identifier}' not found") from None
 
 
 @router.put("/stories/{storyId}")
@@ -72,19 +106,29 @@ def replace_story_endpoint(storyId: str, story: StoryTemplate) -> StoryTemplate:
     if errors:
         raise HTTPException(status_code=400, detail={"errors": errors})
 
-    available_voices = get_available_voice_ids()
+    voice_repo = get_voice_repository()
+    available_voices = voice_repo.get_available_ids()
     if story.defaultVoiceId not in available_voices:
         raise HTTPException(
             status_code=400,
             detail=f"defaultVoiceId '{story.defaultVoiceId}' not found in available voices",
         )
 
-    try:
-        load_story(storyId)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found") from None
+    story_repo = get_story_repository()
+    if not story_repo.exists(storyId):
+        raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found")
 
-    save_story(storyId, story)
+    # Preserve the existing id if not provided
+    try:
+        existing = story_repo.get(storyId)
+        if story.id is None:
+            story.id = existing.id
+        if story.slug is None:
+            story.slug = existing.slug or storyId
+    except KeyError:
+        pass
+
+    story_repo.save(storyId, story)
     return story
 
 
@@ -98,12 +142,14 @@ def render_story_endpoint(storyId: str) -> list[ResolvedLine]:
 
     Use this endpoint to verify voice assignments before generating audio.
     """
+    story_repo = get_story_repository()
     try:
-        story = load_story(storyId)
-    except FileNotFoundError:
+        story = story_repo.get(storyId)
+    except KeyError:
         raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found") from None
 
-    available_voices = get_available_voice_ids()
+    voice_repo = get_voice_repository()
+    available_voices = voice_repo.get_available_ids()
 
     try:
         resolved = resolve_story(story, available_voices)
@@ -123,10 +169,9 @@ def generate_story_endpoint(
     Only one job per story can be running or queued at a time.
     If a job is already active for this story, returns 409 Conflict.
     """
-    try:
-        load_story(storyId)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found") from None
+    story_repo = get_story_repository()
+    if not story_repo.exists(storyId):
+        raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found")
 
     existing_job = get_active_story_job(storyId)
     if existing_job:

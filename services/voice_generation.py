@@ -6,7 +6,7 @@ import asyncio
 from pathlib import Path
 
 from lib.models import VoiceConfig
-from lib.storage import save_voice_config
+from lib.repositories import get_voice_repository
 from lib.voice_generation import generate_voice
 from services.models import get_base_model, get_voice_design_model
 
@@ -24,5 +24,5 @@ async def generate_voice_job(voice_id: str, voice_config: VoiceConfig) -> Path:
         force_regenerate=False,
     )
 
-    save_voice_config(voice_id, voice_config)
+    get_voice_repository().save(voice_id, voice_config)
     return prompt_path

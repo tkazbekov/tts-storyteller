@@ -9,14 +9,29 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import audio, jobs, pools, stories, voices
-from services.jobs import start_worker
+from lib.database import close_database, init_database
+from lib.env import load_env
+from services.jobs import recover_jobs_on_startup, start_worker
+
+load_env()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI startup/shutdown."""
+    # Initialize database (DATABASE_URL is required)
+    await init_database()
+    recovered = recover_jobs_on_startup()
+    if recovered > 0:
+        print(f"[Jobs] Recovered {recovered} queued jobs from database")
+
+    # Start the job processing worker
     start_worker()
+
     yield
+
+    # Cleanup
+    await close_database()
 
 
 app = FastAPI(title="Qwen3-TTS Home API", version="0.1.0", lifespan=lifespan)

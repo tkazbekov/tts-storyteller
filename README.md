@@ -447,11 +447,21 @@ The codebase is organized into reusable library modules:
 
 ### API features
 
-- **File-based storage**: Stories stored as JSON files in `stories/`
+- **Postgres-backed storage**: Stories, voices, pools, jobs, and metadata live in Postgres; set `DATABASE_URL` before running. Use `scripts/migrate_to_db.py` (requires `DATABASE_URL`) to import the legacy JSON/metadata into the database before starting the API. The FastAPI app and CLI scripts auto-load `.env` via `python-dotenv`, so keeping your credentials/config in the repository root is enough—no manual `source .env` steps once you run the CLI or `uvicorn api.app:app`.
 - **Model caching**: TTS model loaded once and reused across generations
 - **Async job system**: Non-blocking generation with status tracking
 - **Validation**: Story templates validated on create/update
 - **CORS enabled**: Ready for mobile web app access
+
+The Makefile now exposes helpers for the most common database tasks:
+
+```
+make apply-migrations   # run Alembic migrations (requires .env)
+make migrate-legacy    # import file-based stories/voices/metadata
+make db-setup          # run migrations then import legacy data
+```
+
+Each target sources `env.sh`, so you can run them without worrying about loading `.env` separately.
 
 ### Job system
 
@@ -462,6 +472,10 @@ Generation runs asynchronously:
 4. On success, download audio via `GET /audio/stories/{storyId}/full.wav`
 
 Job responses include timestamps: `createdAt`, `startedAt`, and `finishedAt` (ISO 8601).
+
+### Current async gap
+
+The database repositories still rely on `_run_sync` wrappers that call `asyncio.run()` so the app can expose synchronous endpoints. When requests are handled inside Uvicorn/Starlette’s event loop, that shim raises “Task … got Future … attached to a different loop”, causing 500 errors on `/voices` (and any route that touches `_run_sync`). The next phase of cleanup is to convert the FastAPI routes and services to async, drop `_run_sync`, and invoke the `_async` methods directly; once that’s done the server can run without those runtime errors.
 
 ## Development tools
 

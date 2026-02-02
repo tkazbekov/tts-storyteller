@@ -18,6 +18,14 @@ source "$SCRIPT_DIR/.venv/bin/activate"
 # Add project root to PYTHONPATH so imports work
 export PYTHONPATH="$SCRIPT_DIR:${PYTHONPATH:-}"
 
+# Load repository .env if present so shell commands get the same vars
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  set -o allexport
+  # shellcheck disable=SC1090
+  source "$SCRIPT_DIR/.env"
+  set +o allexport
+fi
+
 # Prefer CUDA 12.8 toolkit for compatibility with torch+cu128
 if [ -d "/usr/local/cuda-12.8" ]; then
   export CUDA_HOME="/usr/local/cuda-12.8"

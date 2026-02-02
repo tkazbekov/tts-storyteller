@@ -59,6 +59,10 @@ A minimal step without moving everything at once:
   - incremental hashing + changed-index detection
 - Add a few integration tests for API endpoints.
 
+### 1.6 Make FastAPI routes async
+
+- Right now the database repositories still call `_run_sync` wrappers when the synchronous routes hit them. That works in CLI scripts but fails inside Uvicorn’s existing event loop (`Task … got Future … attached to a different loop`). Convert the routes (and any helpers that call them) to async so they invoke the `_async` repository methods directly, remove `_run_sync`, and keep the job worker working without extra loops.
+
 **Deliverable for Phase 1:** refactor PR(s) with same endpoints and behavior, cleaner layout, better defaults and tests.
 
 ---

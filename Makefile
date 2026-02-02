@@ -64,3 +64,11 @@ run-api: check-venv ## Run the FastAPI server
 
 run-demo: ## Run the Gradio demo
 	./run.sh
+
+apply-migrations: check-venv ## Run Alembic migrations (requires DATABASE_URL in .env)
+	bash -c 'source env.sh && alembic upgrade head'
+
+migrate-legacy: check-venv ## Migrate legacy file data into Postgres (requires .env)
+	bash -c 'source env.sh && python scripts/migrate_to_db.py'
+
+db-setup: apply-migrations migrate-legacy ## Apply schema migrations then import legacy data
