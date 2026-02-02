@@ -15,61 +15,13 @@
 
 ## 1) Cleanup / refactor (no feature changes)
 
-### 1.1 Untangle API vs domain vs infrastructure
-
-**Today:** `api/main.py` owns too much: routing, job engine, model caching, business rules.
-
-**Target structure (suggested):**
-
-- `api/` — FastAPI routes only
-- `domain/` — pure business logic (no IO)
-- `services/` — orchestration (resolve + validate + generation requests)
-- `infra/` — storage (file now, db later), queue, model loading, audio concat
-
-A minimal step without moving everything at once:
-- Extract job runner + model loader into `services/`.
-- Keep `lib/` as-is initially but stop importing `scripts/common.py` from server code.
-
-### 1.2 Make generation options consistent
-
-- Align `GenerateRequest.concat` default with server behavior (currently model default `False`, API effectively defaults `True` when missing).
-- Decide and document:
-  - default concat = `true` or `false`
-  - what `outputPath` means when concat is false (directory vs file)
-
-### 1.3 Standardize ID rules
-
-- Story IDs:
-  - currently derived from title, sanitized; collisions are possible.
-  - Decide strategy: either (a) slug + numeric suffix, or (b) UUID internal id + display title.
-- Voice IDs:
-  - keep as user-chosen stable identifiers (e.g., `narrator_male`).
-
-### 1.4 Job engine hardening (still file-based)
-
-- Make job state transitions explicit (queued → running → succeeded/failed).
-- Add timestamps: `createdAt`, `startedAt`, `finishedAt`.
-- Track progress fields where possible (even coarse: “line 12/80”).
-
-### 1.5 Testing + lint discipline
-
-- Add unit tests for:
-  - resolution order
-  - validation errors
-  - incremental hashing + changed-index detection
-- Add a few integration tests for API endpoints.
-
-### 1.6 Make FastAPI routes async
-
-- Right now the database repositories still call `_run_sync` wrappers when the synchronous routes hit them. That works in CLI scripts but fails inside Uvicorn’s existing event loop (`Task … got Future … attached to a different loop`). Convert the routes (and any helpers that call them) to async so they invoke the `_async` repository methods directly, remove `_run_sync`, and keep the job worker working without extra loops.
-
-**Deliverable for Phase 1:** refactor PR(s) with same endpoints and behavior, cleaner layout, better defaults and tests.
+Phase 1 is finished: the job engine, model loader, and metadata resolver now live in `services/`, the FastAPI routes and helper services await the async repositories, `_run_sync` is gone, and the tooling/docs describe the async-first posture. What remains in this slice is ordinary maintenance (tests, lint, docs) while Phase 2 and Phase 3 move forward.
 
 ---
 
 ## 2) Move storage from files → Postgres
 
-### 2.1 Decide what stays “file”
+### 2.1 Decide what stays “file” and what lives in Postgres
 
 Even with Postgres, generated artifacts are large. Recommended split:
 
@@ -150,24 +102,19 @@ You can still *index* file paths in DB.
 
 ### 2.3 Data migration
 
-- Write a one-off migration script:
-  - import `voices/voices.json` into `voices`
-  - import `voices/pools.json` into pools + members
-  - import `stories/*.json` into stories/roles/lines/casting
-  - optionally: read `.voice_metadata.json` and `.generation_metadata.json` into DB tables
+- `scripts/migrate_to_db.py` imports `voices/voices.json`, `voices/pools.json`, and `stories/*.json` into Postgres and copies `.generation_metadata.json` into `story_generation_metadata`.
+- Run `alembic upgrade head` followed by `make migrate-legacy` after pointing `DATABASE_URL` at the Postgres container.
 
 ### 2.4 Repository interface
 
-Introduce a repository layer (even if simple):
 - `StoryRepo` (get/list/create/update)
 - `VoiceRepo` (get/list/create/update/delete)
 - `JobRepo` (create/update/get/list)
+- `MetadataRepo` (save/load line hashes)
 
-Then swap implementations:
-- Phase 2a: keep file impl but behind repos
-- Phase 2b: add Postgres impl and flip a config flag
+### 2.5 Deliverable for Phase 2
 
-**Deliverable for Phase 2:** API behavior preserved, storage backed by Postgres, artifacts still on disk.
+API behavior preserved, storage backed by Postgres, artifacts still on disk, and CLI scripts/migrations hooked into the new schema.
 
 ---
 

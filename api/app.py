@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI startup/shutdown."""
     # Initialize database (DATABASE_URL is required)
     await init_database()
-    recovered = recover_jobs_on_startup()
+    recovered = await recover_jobs_on_startup()
     if recovered > 0:
         print(f"[Jobs] Recovered {recovered} queued jobs from database")
 

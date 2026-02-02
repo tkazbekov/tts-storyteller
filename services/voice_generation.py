@@ -24,5 +24,5 @@ async def generate_voice_job(voice_id: str, voice_config: VoiceConfig) -> Path:
         force_regenerate=False,
     )
 
-    get_voice_repository().save(voice_id, voice_config)
+    await get_voice_repository().save(voice_id, voice_config)
     return prompt_path

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Generate a multi-voice story from a stored template."""
 
+from __future__ import annotations
+
 import argparse
+import asyncio
 import sys
 
 from lib.env import load_env
@@ -15,31 +18,22 @@ DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 load_env()
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate a multi-voice story from a JSON template."
-    )
-    parser.add_argument(
-        "--story", required=True, help="Story ID (filename without .json extension)"
-    )
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Base model id")
-    parser.add_argument("--device", default="cuda:0", help="Device map, e.g. cuda:0 or cpu")
-    parser.add_argument("--dtype", default="bfloat16", help="bf16|fp16|fp32")
-    parser.add_argument("--attn", default="auto", help="auto|none|flash_attention_2")
-    parser.add_argument("--language", default="English", help="Language for generation")
-    parser.add_argument("--no-concat", action="store_true", help="Don't concatenate outputs")
-    args = parser.parse_args()
+async def _resolve_story_async(story_id: str):
+    story_repo = get_story_repository()
+    voice_repo = get_voice_repository()
 
+    story = await story_repo.get(story_id)
+    available_voices = await voice_repo.get_available_ids()
+    resolved_lines = resolve_story(story, available_voices)
+    return story, resolved_lines
+
+
+async def run_async(args: argparse.Namespace) -> int:
     try:
-        # Load story via repository
-        story = get_story_repository().get(args.story)
+        story, resolved_lines = await _resolve_story_async(args.story)
 
-        # Resolve roles to voices
-        available_voices = get_voice_repository().get_available_ids()
-        resolved_lines = resolve_story(story, available_voices)
-
-        # Generate audio
-        output_path = generate_story_audio(
+        output_path = await asyncio.to_thread(
+            generate_story_audio,
             resolved_lines=resolved_lines,
             story_id=args.story,
             model=args.model,
@@ -69,6 +63,24 @@ def main() -> int:
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Generate a multi-voice story from a JSON template."
+    )
+    parser.add_argument(
+        "--story", required=True, help="Story ID (filename without .json extension)"
+    )
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Base model id")
+    parser.add_argument("--device", default="cuda:0", help="Device map, e.g. cuda:0 or cpu")
+    parser.add_argument("--dtype", default="bfloat16", help="bf16|fp16|fp32")
+    parser.add_argument("--attn", default="auto", help="auto|none|flash_attention_2")
+    parser.add_argument("--language", default="English", help="Language for generation")
+    parser.add_argument("--no-concat", action="store_true", help="Don't concatenate outputs")
+    args = parser.parse_args()
+
+    return asyncio.run(run_async(args))
 
 
 if __name__ == "__main__":

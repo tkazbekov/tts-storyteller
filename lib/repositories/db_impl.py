@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import uuid
-from collections.abc import Coroutine
 from datetime import UTC, datetime
 from typing import Any
 
@@ -26,27 +24,12 @@ from lib.models import Job, Role, StoryLine, StoryTemplate, VoiceConfig
 from lib.paths import get_prompt_path, get_voice_ref_audio_path
 
 
-def _run_sync[T](coro: Coroutine[Any, Any, T]) -> T:
-    """Run an async coroutine synchronously."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-
-    # We're inside an event loop - run in a thread pool
-    import concurrent.futures
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future = executor.submit(asyncio.run, coro)
-        return future.result()
-
-
 class DbStoryRepository:
     """Postgres-backed story repository."""
 
-    def get(self, story_id: str) -> StoryTemplate:
+    async def get(self, story_id: str) -> StoryTemplate:
         """Load a story by ID (UUID or slug)."""
-        return _run_sync(self._get_async(story_id))
+        return await self._get_async(story_id)
 
     async def _get_async(self, story_id: str) -> StoryTemplate:
         async with get_session() as session:
@@ -66,9 +49,9 @@ class DbStoryRepository:
 
             return await self._model_to_template(session, story_model)
 
-    def get_by_slug(self, slug: str) -> StoryTemplate:
+    async def get_by_slug(self, slug: str) -> StoryTemplate:
         """Load a story by slug."""
-        return _run_sync(self._get_by_slug_async(slug))
+        return await self._get_by_slug_async(slug)
 
     async def _get_by_slug_async(self, slug: str) -> StoryTemplate:
         async with get_session() as session:
@@ -81,9 +64,9 @@ class DbStoryRepository:
 
             return await self._model_to_template(session, story_model)
 
-    def list_ids(self) -> list[str]:
+    async def list_ids(self) -> list[str]:
         """List all story slugs."""
-        return _run_sync(self._list_ids_async())
+        return await self._list_ids_async()
 
     async def _list_ids_async(self) -> list[str]:
         async with get_session() as session:
@@ -91,9 +74,9 @@ class DbStoryRepository:
             result = await session.execute(stmt)
             return list(result.scalars().all())
 
-    def save(self, story_id: str, story: StoryTemplate) -> None:
+    async def save(self, story_id: str, story: StoryTemplate) -> None:
         """Save a story (create or update)."""
-        _run_sync(self._save_async(story_id, story))
+        await self._save_async(story_id, story)
 
     async def _save_async(self, story_id: str, story: StoryTemplate) -> None:
         async with get_session() as session:
@@ -153,9 +136,9 @@ class DbStoryRepository:
                 )
                 session.add(line_model)
 
-    def exists(self, story_id: str) -> bool:
+    async def exists(self, story_id: str) -> bool:
         """Check if a story exists."""
-        return _run_sync(self._exists_async(story_id))
+        return await self._exists_async(story_id)
 
     async def _exists_async(self, story_id: str) -> bool:
         async with get_session() as session:
@@ -169,9 +152,9 @@ class DbStoryRepository:
             result = await session.execute(stmt)
             return result.scalar_one_or_none() is not None
 
-    def delete(self, story_id: str) -> None:
+    async def delete(self, story_id: str) -> None:
         """Delete a story."""
-        _run_sync(self._delete_async(story_id))
+        await self._delete_async(story_id)
 
     async def _delete_async(self, story_id: str) -> None:
         async with get_session() as session:
@@ -233,9 +216,9 @@ class DbStoryRepository:
 class DbVoiceRepository:
     """Postgres-backed voice repository."""
 
-    def get(self, voice_id: str) -> dict[str, Any] | None:
+    async def get(self, voice_id: str) -> dict[str, Any] | None:
         """Get voice configuration by ID."""
-        return _run_sync(self._get_async(voice_id))
+        return await self._get_async(voice_id)
 
     async def _get_async(self, voice_id: str) -> dict[str, Any] | None:
         async with get_session() as session:
@@ -253,9 +236,9 @@ class DbVoiceRepository:
                 "sample_text": voice.sample_text,
             }
 
-    def get_info(self, voice_id: str) -> dict[str, Any] | None:
+    async def get_info(self, voice_id: str) -> dict[str, Any] | None:
         """Get voice info including paths."""
-        voice = self.get(voice_id)
+        voice = await self.get(voice_id)
         if not voice:
             return None
 
@@ -271,9 +254,9 @@ class DbVoiceRepository:
             "refAudioPath": str(ref_audio_path) if ref_audio_path.exists() else None,
         }
 
-    def list_all(self) -> list[dict[str, Any]]:
+    async def list_all(self) -> list[dict[str, Any]]:
         """List all voice configurations."""
-        return _run_sync(self._list_all_async())
+        return await self._list_all_async()
 
     async def _list_all_async(self) -> list[dict[str, Any]]:
         async with get_session() as session:
@@ -291,9 +274,9 @@ class DbVoiceRepository:
                 for v in voices
             ]
 
-    def save(self, voice_id: str, voice_config: VoiceConfig) -> None:
+    async def save(self, voice_id: str, voice_config: VoiceConfig) -> None:
         """Save voice configuration."""
-        _run_sync(self._save_async(voice_id, voice_config))
+        await self._save_async(voice_id, voice_config)
 
     async def _save_async(self, voice_id: str, voice_config: VoiceConfig) -> None:
         async with get_session() as session:
@@ -314,21 +297,21 @@ class DbVoiceRepository:
                 )
                 session.add(voice)
 
-    def delete(self, voice_id: str) -> None:
+    async def delete(self, voice_id: str) -> None:
         """Delete voice configuration."""
-        _run_sync(self._delete_async(voice_id))
+        await self._delete_async(voice_id)
 
     async def _delete_async(self, voice_id: str) -> None:
         async with get_session() as session:
             stmt = delete(VoiceModel).where(VoiceModel.id == voice_id)
             await session.execute(stmt)
 
-    def get_available_ids(self) -> set[str]:
+    async def get_available_ids(self) -> set[str]:
         """Get set of voice IDs with prompt files."""
-        all_voices = self.list_all()
+        all_voices = await self.list_all()
         return {v["id"] for v in all_voices if get_prompt_path(v["id"]).exists()}
 
-    def has_prompt(self, voice_id: str) -> bool:
+    async def has_prompt(self, voice_id: str) -> bool:
         """Check if voice has a prompt file."""
         return get_prompt_path(voice_id).exists()
 
@@ -336,9 +319,9 @@ class DbVoiceRepository:
 class DbPoolRepository:
     """Postgres-backed pool repository."""
 
-    def get_voices(self, pool_name: str) -> list[str]:
+    async def get_voices(self, pool_name: str) -> list[str]:
         """Get voice IDs in a pool."""
-        return _run_sync(self._get_voices_async(pool_name))
+        return await self._get_voices_async(pool_name)
 
     async def _get_voices_async(self, pool_name: str) -> list[str]:
         async with get_session() as session:
@@ -350,9 +333,9 @@ class DbPoolRepository:
             result = await session.execute(stmt)
             return list(result.scalars().all())
 
-    def list_pools(self) -> set[str]:
+    async def list_pools(self) -> set[str]:
         """List all pool names."""
-        return _run_sync(self._list_pools_async())
+        return await self._list_pools_async()
 
     async def _list_pools_async(self) -> set[str]:
         async with get_session() as session:
@@ -360,9 +343,9 @@ class DbPoolRepository:
             result = await session.execute(stmt)
             return set(result.scalars().all())
 
-    def get_all_pools(self) -> dict[str, list[str]]:
+    async def get_all_pools(self) -> dict[str, list[str]]:
         """Get all pools with their voice IDs."""
-        return _run_sync(self._get_all_pools_async())
+        return await self._get_all_pools_async()
 
     async def _get_all_pools_async(self) -> dict[str, list[str]]:
         async with get_session() as session:
@@ -380,9 +363,9 @@ class DbPoolRepository:
 
             return pool_dict
 
-    def save_pool(self, pool_name: str, voice_ids: list[str]) -> None:
+    async def save_pool(self, pool_name: str, voice_ids: list[str]) -> None:
         """Save or update a pool."""
-        _run_sync(self._save_pool_async(pool_name, voice_ids))
+        await self._save_pool_async(pool_name, voice_ids)
 
     async def _save_pool_async(self, pool_name: str, voice_ids: list[str]) -> None:
         async with get_session() as session:
@@ -406,18 +389,18 @@ class DbPoolRepository:
                 member = VoicePoolMemberModel(pool_id=pool.id, voice_id=voice_id)
                 session.add(member)
 
-    def delete_pool(self, pool_name: str) -> None:
+    async def delete_pool(self, pool_name: str) -> None:
         """Delete a pool."""
-        _run_sync(self._delete_pool_async(pool_name))
+        await self._delete_pool_async(pool_name)
 
     async def _delete_pool_async(self, pool_name: str) -> None:
         async with get_session() as session:
             stmt = delete(VoicePoolModel).where(VoicePoolModel.name == pool_name)
             await session.execute(stmt)
 
-    def add_voice(self, voice_id: str, pool_name: str) -> None:
+    async def add_voice(self, voice_id: str, pool_name: str) -> None:
         """Add a voice to a pool."""
-        _run_sync(self._add_voice_async(voice_id, pool_name))
+        await self._add_voice_async(voice_id, pool_name)
 
     async def _add_voice_async(self, voice_id: str, pool_name: str) -> None:
         async with get_session() as session:
@@ -441,9 +424,9 @@ class DbPoolRepository:
                 member = VoicePoolMemberModel(pool_id=pool.id, voice_id=voice_id)
                 session.add(member)
 
-    def remove_voice(self, voice_id: str, pool_name: str) -> None:
+    async def remove_voice(self, voice_id: str, pool_name: str) -> None:
         """Remove a voice from a pool."""
-        _run_sync(self._remove_voice_async(voice_id, pool_name))
+        await self._remove_voice_async(voice_id, pool_name)
 
     async def _remove_voice_async(self, voice_id: str, pool_name: str) -> None:
         async with get_session() as session:
@@ -455,9 +438,9 @@ class DbPoolRepository:
             )
             await session.execute(stmt)
 
-    def remove_voice_from_all(self, voice_id: str) -> None:
+    async def remove_voice_from_all(self, voice_id: str) -> None:
         """Remove a voice from all pools."""
-        _run_sync(self._remove_voice_from_all_async(voice_id))
+        await self._remove_voice_from_all_async(voice_id)
 
     async def _remove_voice_from_all_async(self, voice_id: str) -> None:
         async with get_session() as session:
@@ -468,9 +451,9 @@ class DbPoolRepository:
 class DbJobRepository:
     """Postgres-backed job repository."""
 
-    def get(self, job_id: str) -> Job | None:
+    async def get(self, job_id: str) -> Job | None:
         """Get a job by ID."""
-        return _run_sync(self._get_async(job_id))
+        return await self._get_async(job_id)
 
     async def _get_async(self, job_id: str) -> Job | None:
         async with get_session() as session:
@@ -488,9 +471,9 @@ class DbJobRepository:
 
             return self._model_to_job(job_model)
 
-    def save(self, job: Job) -> None:
+    async def save(self, job: Job) -> None:
         """Save a job."""
-        _run_sync(self._save_async(job))
+        await self._save_async(job)
 
     async def _save_async(self, job: Job) -> None:
         async with get_session() as session:
@@ -531,9 +514,9 @@ class DbJobRepository:
                 )
                 session.add(job_model)
 
-    def get_active_for_story(self, story_id: str) -> Job | None:
+    async def get_active_for_story(self, story_id: str) -> Job | None:
         """Get active job for a story."""
-        return _run_sync(self._get_active_for_story_async(story_id))
+        return await self._get_active_for_story_async(story_id)
 
     async def _get_active_for_story_async(self, story_id: str) -> Job | None:
         async with get_session() as session:
@@ -564,9 +547,9 @@ class DbJobRepository:
 
             return self._model_to_job(job_model) if job_model else None
 
-    def get_active_for_voice(self, voice_id: str) -> Job | None:
+    async def get_active_for_voice(self, voice_id: str) -> Job | None:
         """Get active job for a voice."""
-        return _run_sync(self._get_active_for_voice_async(voice_id))
+        return await self._get_active_for_voice_async(voice_id)
 
     async def _get_active_for_voice_async(self, voice_id: str) -> Job | None:
         async with get_session() as session:
@@ -584,9 +567,9 @@ class DbJobRepository:
 
             return self._model_to_job(job_model) if job_model else None
 
-    def get_queued_jobs(self) -> list[Job]:
+    async def get_queued_jobs(self) -> list[Job]:
         """Get all queued jobs."""
-        return _run_sync(self._get_queued_jobs_async())
+        return await self._get_queued_jobs_async()
 
     async def _get_queued_jobs_async(self) -> list[Job]:
         async with get_session() as session:
@@ -596,7 +579,7 @@ class DbJobRepository:
 
             return [self._model_to_job(j) for j in job_models]
 
-    def update_status(
+    async def update_status(
         self,
         job_id: str,
         status: str,
@@ -606,8 +589,8 @@ class DbJobRepository:
         finished_at: str | None = None,
     ) -> None:
         """Update job status."""
-        _run_sync(
-            self._update_status_async(job_id, status, message, output_path, started_at, finished_at)
+        await self._update_status_async(
+            job_id, status, message, output_path, started_at, finished_at
         )
 
     async def _update_status_async(
@@ -664,9 +647,9 @@ class DbJobRepository:
 class DbMetadataRepository:
     """Postgres-backed metadata repository."""
 
-    def save_line_hashes(self, story_id: str, line_hashes: list[str], language: str) -> None:
+    async def save_line_hashes(self, story_id: str, line_hashes: list[str], language: str) -> None:
         """Save line hashes."""
-        _run_sync(self._save_line_hashes_async(story_id, line_hashes, language))
+        await self._save_line_hashes_async(story_id, line_hashes, language)
 
     async def _save_line_hashes_async(
         self, story_id: str, line_hashes: list[str], language: str
@@ -702,9 +685,9 @@ class DbMetadataRepository:
                 )
                 session.add(metadata)
 
-    def load_line_hashes(self, story_id: str) -> tuple[list[str], str] | None:
+    async def load_line_hashes(self, story_id: str) -> tuple[list[str], str] | None:
         """Load line hashes and language."""
-        return _run_sync(self._load_line_hashes_async(story_id))
+        return await self._load_line_hashes_async(story_id)
 
     async def _load_line_hashes_async(self, story_id: str) -> tuple[list[str], str] | None:
         async with get_session() as session:

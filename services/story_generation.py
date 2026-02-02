@@ -17,15 +17,18 @@ from lib.resolution import resolve_story
 from services.models import get_base_model
 
 
-def _resolve_story(story_id: str):
-    story = get_story_repository().get(story_id)
-    available_voices = get_voice_repository().get_available_ids()
+async def _resolve_story(story_id: str):
+    story_repo = get_story_repository()
+    voice_repo = get_voice_repository()
+
+    story = await story_repo.get(story_id)
+    available_voices = await voice_repo.get_available_ids()
     resolved_lines = resolve_story(story, available_voices)
     return story, resolved_lines
 
 
 async def generate_story(story_id: str, request_params: dict[str, Any] | None) -> Path:
-    story, resolved_lines = _resolve_story(story_id)
+    story, resolved_lines = await _resolve_story(story_id)
     language = story.language
 
     params = request_params or {}
@@ -33,7 +36,7 @@ async def generate_story(story_id: str, request_params: dict[str, Any] | None) -
 
     metadata_repo = get_metadata_repository()
     regenerate_indices: set[int] | None = None
-    existing_metadata = metadata_repo.load_line_hashes(story_id)
+    existing_metadata = await metadata_repo.load_line_hashes(story_id)
     current_hashes = [compute_line_hash(line, language) for line in resolved_lines]
 
     if existing_metadata is not None:
@@ -60,5 +63,5 @@ async def generate_story(story_id: str, request_params: dict[str, Any] | None) -
         regenerate_indices=regenerate_indices,
     )
 
-    metadata_repo.save_line_hashes(story_id, current_hashes, language)
+    await metadata_repo.save_line_hashes(story_id, current_hashes, language)
     return output_path

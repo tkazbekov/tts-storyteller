@@ -11,9 +11,9 @@ router = APIRouter()
 
 
 @router.get("/jobs/{jobId}")
-def get_job_endpoint(jobId: str) -> Job:
+async def get_job_endpoint(jobId: str) -> Job:
     """Get job status by ID."""
-    job = get_job(jobId)
+    job = await get_job(jobId)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job '{jobId}' not found")
     return job

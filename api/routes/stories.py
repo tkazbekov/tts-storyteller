@@ -17,19 +17,19 @@ router = APIRouter()
 
 
 @router.get("/stories")
-def list_stories_endpoint() -> list[StorySummary]:
+async def list_stories_endpoint() -> list[StorySummary]:
     """
     List all stories.
 
     Returns story summaries with id, slug, and title.
     """
     story_repo = get_story_repository()
-    story_ids = story_repo.list_ids()
+    story_ids = await story_repo.list_ids()
 
     summaries: list[StorySummary] = []
     for slug in story_ids:
         try:
-            story = story_repo.get(slug)
+            story = await story_repo.get(slug)
             summaries.append(
                 StorySummary(
                     id=story.id,
@@ -44,7 +44,7 @@ def list_stories_endpoint() -> list[StorySummary]:
 
 
 @router.post("/stories", status_code=201)
-def create_story_endpoint(story: StoryTemplate) -> StoryTemplate:
+async def create_story_endpoint(story: StoryTemplate) -> StoryTemplate:
     """
     Create a new story template.
 
@@ -60,7 +60,7 @@ def create_story_endpoint(story: StoryTemplate) -> StoryTemplate:
         raise HTTPException(status_code=400, detail={"errors": errors})
 
     voice_repo = get_voice_repository()
-    available_voices = voice_repo.get_available_ids()
+    available_voices = await voice_repo.get_available_ids()
     if story.defaultVoiceId not in available_voices:
         raise HTTPException(
             status_code=400,
@@ -73,19 +73,19 @@ def create_story_endpoint(story: StoryTemplate) -> StoryTemplate:
         slug = "story"
 
     story_repo = get_story_repository()
-    if story_repo.exists(slug):
+    if await story_repo.exists(slug):
         raise HTTPException(status_code=409, detail=f"Story '{slug}' already exists")
 
     # Assign server-generated id and slug
     story.id = uuid.uuid4()
     story.slug = slug
 
-    story_repo.save(slug, story)
+    await story_repo.save(slug, story)
     return story
 
 
 @router.get("/stories/{identifier}")
-def get_story_endpoint(identifier: str) -> StoryTemplate:
+async def get_story_endpoint(identifier: str) -> StoryTemplate:
     """
     Get story template by ID or slug.
 
@@ -94,20 +94,20 @@ def get_story_endpoint(identifier: str) -> StoryTemplate:
     - A slug (e.g., "my_story_title")
     """
     try:
-        return get_story_repository().get(identifier)
+        return await get_story_repository().get(identifier)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Story '{identifier}' not found") from None
 
 
 @router.put("/stories/{storyId}")
-def replace_story_endpoint(storyId: str, story: StoryTemplate) -> StoryTemplate:
+async def replace_story_endpoint(storyId: str, story: StoryTemplate) -> StoryTemplate:
     """Replace an existing story template."""
     errors = validate_story(story.model_dump())
     if errors:
         raise HTTPException(status_code=400, detail={"errors": errors})
 
     voice_repo = get_voice_repository()
-    available_voices = voice_repo.get_available_ids()
+    available_voices = await voice_repo.get_available_ids()
     if story.defaultVoiceId not in available_voices:
         raise HTTPException(
             status_code=400,
@@ -115,12 +115,12 @@ def replace_story_endpoint(storyId: str, story: StoryTemplate) -> StoryTemplate:
         )
 
     story_repo = get_story_repository()
-    if not story_repo.exists(storyId):
+    if not await story_repo.exists(storyId):
         raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found")
 
     # Preserve the existing id if not provided
     try:
-        existing = story_repo.get(storyId)
+        existing = await story_repo.get(storyId)
         if story.id is None:
             story.id = existing.id
         if story.slug is None:
@@ -128,12 +128,12 @@ def replace_story_endpoint(storyId: str, story: StoryTemplate) -> StoryTemplate:
     except KeyError:
         pass
 
-    story_repo.save(storyId, story)
+    await story_repo.save(storyId, story)
     return story
 
 
 @router.post("/stories/{storyId}/render")
-def render_story_endpoint(storyId: str) -> list[ResolvedLine]:
+async def render_story_endpoint(storyId: str) -> list[ResolvedLine]:
     """
     Resolve roles to voices for a story.
 
@@ -144,12 +144,12 @@ def render_story_endpoint(storyId: str) -> list[ResolvedLine]:
     """
     story_repo = get_story_repository()
     try:
-        story = story_repo.get(storyId)
+        story = await story_repo.get(storyId)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found") from None
 
     voice_repo = get_voice_repository()
-    available_voices = voice_repo.get_available_ids()
+    available_voices = await voice_repo.get_available_ids()
 
     try:
         resolved = resolve_story(story, available_voices)
@@ -159,7 +159,7 @@ def render_story_endpoint(storyId: str) -> list[ResolvedLine]:
 
 
 @router.post("/stories/{storyId}/generate", status_code=202)
-def generate_story_endpoint(
+async def generate_story_endpoint(
     storyId: str,
     request: GenerateRequest | None = None,
 ) -> Job:
@@ -170,10 +170,10 @@ def generate_story_endpoint(
     If a job is already active for this story, returns 409 Conflict.
     """
     story_repo = get_story_repository()
-    if not story_repo.exists(storyId):
+    if not await story_repo.exists(storyId):
         raise HTTPException(status_code=404, detail=f"Story '{storyId}' not found")
 
-    existing_job = get_active_story_job(storyId)
+    existing_job = await get_active_story_job(storyId)
     if existing_job:
         raise HTTPException(
             status_code=409,
@@ -187,7 +187,7 @@ def generate_story_endpoint(
     request_params = request.model_dump() if request else {}
 
     try:
-        job = enqueue_story_job(storyId, request_params)
+        job = await enqueue_story_job(storyId, request_params)
     except ValueError:
         raise HTTPException(
             status_code=409,

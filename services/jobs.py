@@ -25,26 +25,26 @@ def _new_job_id() -> str:
     return str(uuid.uuid4())
 
 
-def get_job(job_id: str) -> Job | None:
+async def get_job(job_id: str) -> Job | None:
     """Get a job by ID."""
-    return get_job_repository().get(job_id)
+    return await get_job_repository().get(job_id)
 
 
-def get_active_story_job(story_id: str) -> Job | None:
+async def get_active_story_job(story_id: str) -> Job | None:
     """Get active (queued/running) job for a story."""
-    return get_job_repository().get_active_for_story(story_id)
+    return await get_job_repository().get_active_for_story(story_id)
 
 
-def get_active_voice_job(voice_id: str) -> Job | None:
+async def get_active_voice_job(voice_id: str) -> Job | None:
     """Get active (queued/running) job for a voice."""
-    return get_job_repository().get_active_for_voice(voice_id)
+    return await get_job_repository().get_active_for_voice(voice_id)
 
 
-def enqueue_story_job(story_id: str, request_params: dict[str, Any] | None) -> Job:
+async def enqueue_story_job(story_id: str, request_params: dict[str, Any] | None) -> Job:
     """Create and enqueue a story generation job."""
     job_repo = get_job_repository()
 
-    if job_repo.get_active_for_story(story_id):
+    if await job_repo.get_active_for_story(story_id):
         raise ValueError("active_job")
 
     job = Job(
@@ -61,16 +61,16 @@ def enqueue_story_job(story_id: str, request_params: dict[str, Any] | None) -> J
         finishedAt=None,
     )
 
-    job_repo.save(job)
+    await job_repo.save(job)
     _job_queue.put_nowait(job.id)
     return job
 
 
-def enqueue_voice_job(voice_id: str, voice_config: VoiceConfig, message: str) -> Job:
+async def enqueue_voice_job(voice_id: str, voice_config: VoiceConfig, message: str) -> Job:
     """Create and enqueue a voice generation job."""
     job_repo = get_job_repository()
 
-    if job_repo.get_active_for_voice(voice_id):
+    if await job_repo.get_active_for_voice(voice_id):
         raise ValueError("active_job")
 
     job = Job(
@@ -87,12 +87,12 @@ def enqueue_voice_job(voice_id: str, voice_config: VoiceConfig, message: str) ->
         finishedAt=None,
     )
 
-    job_repo.save(job)
+    await job_repo.save(job)
     _job_queue.put_nowait(job.id)
     return job
 
 
-def recover_jobs_on_startup() -> int:
+async def recover_jobs_on_startup() -> int:
     """
     Recover jobs from the database on startup.
 
@@ -107,7 +107,7 @@ def recover_jobs_on_startup() -> int:
     # For database-backed repository, we can recover jobs
     # For in-memory repository, this is a no-op
     try:
-        queued_jobs = job_repo.get_queued_jobs()
+        queued_jobs = await job_repo.get_queued_jobs()
     except NotImplementedError:
         # In-memory repository doesn't persist jobs
         return 0
@@ -117,7 +117,7 @@ def recover_jobs_on_startup() -> int:
     for job in queued_jobs:
         # Check if this job was "running" (server crashed)
         if job.status == "running":
-            job_repo.update_status(
+            await job_repo.update_status(
                 job.id,
                 status="failed",
                 message="Server restarted while job was running",
@@ -153,7 +153,7 @@ async def process_job_queue() -> None:
             job_id = await _job_queue.get()
             _processing_job = job_id
 
-            current_job = job_repo.get(job_id)
+            current_job = await job_repo.get(job_id)
             if not current_job:
                 _processing_job = None
                 _job_queue.task_done()
@@ -168,7 +168,7 @@ async def process_job_queue() -> None:
                 if current_job.voiceId
                 else "Processing..."
             )
-            job_repo.update_status(
+            await job_repo.update_status(
                 job_id,
                 status="running",
                 message=message,
@@ -191,7 +191,7 @@ async def process_job_queue() -> None:
                 voice_config = VoiceConfig(**voice_config_dict)
                 prompt_path = await generate_voice_job(current_job.voiceId, voice_config)
 
-                job_repo.update_status(
+                await job_repo.update_status(
                     job_id,
                     status="succeeded",
                     message="Voice generation completed",
@@ -208,7 +208,7 @@ async def process_job_queue() -> None:
                     current_job.requestParams,
                 )
 
-                job_repo.update_status(
+                await job_repo.update_status(
                     job_id,
                     status="succeeded",
                     message="Generation completed",
@@ -220,7 +220,7 @@ async def process_job_queue() -> None:
 
         except Exception as e:
             if current_job:
-                job_repo.update_status(
+                await job_repo.update_status(
                     current_job.id,
                     status="failed",
                     message=str(e),

@@ -473,9 +473,9 @@ Generation runs asynchronously:
 
 Job responses include timestamps: `createdAt`, `startedAt`, and `finishedAt` (ISO 8601).
 
-### Current async gap
+### Async-first routes
 
-The database repositories still rely on `_run_sync` wrappers that call `asyncio.run()` so the app can expose synchronous endpoints. When requests are handled inside Uvicorn/Starlette’s event loop, that shim raises “Task … got Future … attached to a different loop”, causing 500 errors on `/voices` (and any route that touches `_run_sync`). The next phase of cleanup is to convert the FastAPI routes and services to async, drop `_run_sync`, and invoke the `_async` methods directly; once that’s done the server can run without those runtime errors.
+The repositories now expose async methods, and the FastAPI routes and services await those methods directly. The previous `_run_sync` shim (which called `asyncio.run()` from existing routes) has been removed, so the app no longer aborts with “task attached to a different loop.” Any CLI or script that still wants the synchronous behavior can call these async helpers via `asyncio.run()`, but the API itself now stays within the single event loop.
 
 ## Development tools
 
