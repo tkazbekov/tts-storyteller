@@ -172,9 +172,15 @@ async def process_job_queue() -> None:
         finally:
             if current_job:
                 current_job.finishedAt = _now_iso()
-                if current_job.storyId and _story_active_jobs.get(current_job.storyId) == current_job.id:
+                if (
+                    current_job.storyId
+                    and _story_active_jobs.get(current_job.storyId) == current_job.id
+                ):
                     _story_active_jobs.pop(current_job.storyId, None)
-                if current_job.voiceId and _voice_active_jobs.get(current_job.voiceId) == current_job.id:
+                if (
+                    current_job.voiceId
+                    and _voice_active_jobs.get(current_job.voiceId) == current_job.id
+                ):
                     _voice_active_jobs.pop(current_job.voiceId, None)
             _processing_job = None
             if current_job is not None:
