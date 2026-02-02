@@ -116,7 +116,7 @@ class VoicePool(BaseModel):
 class GenerateRequest(BaseModel):
     """Request body for story generation."""
 
-    concat: bool = Field(False, description="Whether to concatenate outputs")
+    concat: bool = Field(True, description="Whether to concatenate outputs")
     concatOut: str | None = Field(None, description="Output path for concatenated audio")
 
 
@@ -130,6 +130,9 @@ class Job(BaseModel):
     voiceId: str | None = Field(None, description="Associated voice ID")
     message: str | None = Field(None, description="Status message or error")
     outputPath: str | None = Field(None, description="Path to generated audio file")
+    createdAt: str = Field(..., description="Job creation timestamp (ISO 8601)")
+    startedAt: str | None = Field(None, description="Job start timestamp (ISO 8601)")
+    finishedAt: str | None = Field(None, description="Job completion timestamp (ISO 8601)")
     requestParams: dict[str, Any] | None = Field(
         None, description="Request parameters for generation"
     )
