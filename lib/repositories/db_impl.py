@@ -102,8 +102,8 @@ class DbStoryRepository:
 
                 story_uuid = existing.id
             else:
-                # Create new
-                story_uuid = uuid.uuid4()
+                # Create new: use story.id set by the route so response and DB agree
+                story_uuid = story.id if story.id is not None else uuid.uuid4()
                 story_model = StoryModel(
                     id=story_uuid,
                     slug=story_id,
