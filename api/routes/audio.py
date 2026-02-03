@@ -5,9 +5,31 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from lib.paths import get_story_full_audio_path, get_story_output_dir
+from lib.paths import get_story_full_audio_path, get_story_output_dir, get_voice_ref_audio_path
 
 router = APIRouter()
+
+
+@router.get("/audio/voices/{voiceId}.wav")
+def get_voice_audio(voiceId: str) -> FileResponse:
+    """
+    Download the reference/sample audio for a voice.
+
+    Returns 404 if the voice has not been generated yet (no WAV file).
+    """
+    audio_path = get_voice_ref_audio_path(voiceId)
+
+    if not audio_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Audio for voice '{voiceId}' not found. Generate the voice first.",
+        )
+
+    return FileResponse(
+        path=str(audio_path),
+        media_type="audio/wav",
+        filename=f"{voiceId}.wav",
+    )
 
 
 @router.get("/audio/stories/{storyId}/full.wav")
