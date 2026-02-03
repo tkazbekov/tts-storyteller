@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lib.database import get_session
@@ -578,6 +578,21 @@ class DbJobRepository:
             job_models = result.scalars().all()
 
             return [self._model_to_job(j) for j in job_models]
+
+    async def mark_active_jobs_failed(self, message: str) -> int:
+        """Mark all queued/running jobs as failed. Returns number updated."""
+        return await self._mark_active_jobs_failed_async(message)
+
+    async def _mark_active_jobs_failed_async(self, message: str) -> int:
+        async with get_session() as session:
+            now = datetime.now(UTC)
+            stmt = (
+                update(JobModel)
+                .where(JobModel.status.in_(["queued", "running"]))
+                .values(status="failed", message=message, finished_at=now)
+            )
+            result = await session.execute(stmt)
+            return result.rowcount or 0
 
     async def update_status(
         self,

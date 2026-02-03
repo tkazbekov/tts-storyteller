@@ -11,7 +11,7 @@ from lib.models import GenerateRequest, Job, ResolvedLine, StorySummary, StoryTe
 from lib.repositories import get_story_repository, get_voice_repository
 from lib.resolution import resolve_story
 from lib.validation import validate_story
-from services.jobs import enqueue_story_job, get_active_story_job
+from services.jobs import cancel_job, enqueue_story_job, get_active_story_job
 
 router = APIRouter()
 
@@ -162,12 +162,14 @@ async def render_story_endpoint(storyId: str) -> list[ResolvedLine]:
 async def generate_story_endpoint(
     storyId: str,
     request: GenerateRequest | None = None,
+    cancel_existing: bool = False,
 ) -> Job:
     """
     Start audio generation for a story.
 
     Only one job per story can be running or queued at a time.
-    If a job is already active for this story, returns 409 Conflict.
+    If a job is already active for this story, returns 409 Conflict unless
+    cancel_existing=true, in which case the active job is cancelled and a new one is started.
     """
     story_repo = get_story_repository()
     if not await story_repo.exists(storyId):
@@ -175,14 +177,18 @@ async def generate_story_endpoint(
 
     existing_job = await get_active_story_job(storyId)
     if existing_job:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"Job already active for story '{storyId}'. "
-                f"Existing job ID: {existing_job.id}, status: {existing_job.status}. "
-                "Wait for the current job to complete or cancel it before starting a new one."
-            ),
-        )
+        if cancel_existing:
+            await cancel_job(existing_job.id)
+        else:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Job already active for story '{storyId}'. "
+                    f"Existing job ID: {existing_job.id}, status: {existing_job.status}. "
+                    "Wait for the current job to complete, cancel it (POST /jobs/{id}/cancel), "
+                    "or retry with ?cancel_existing=true to cancel and start a new one."
+                ),
+            )
 
     request_params = request.model_dump() if request else {}
 

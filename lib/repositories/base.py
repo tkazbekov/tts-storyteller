@@ -136,6 +136,10 @@ class JobRepository(Protocol):
         """Get all queued jobs (for recovery on startup)."""
         ...
 
+    async def mark_active_jobs_failed(self, message: str) -> int:
+        """Mark all jobs with status queued/running as failed. Returns count. Used on startup only."""
+        ...
+
     async def update_status(
         self,
         job_id: str,

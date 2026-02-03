@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from lib import storage
@@ -174,6 +175,21 @@ class InMemoryJobRepository:
     def get_queued_jobs(self) -> list[Job]:
         """Get all queued jobs."""
         return [j for j in self._jobs.values() if j.status == "queued"]
+
+    async def mark_active_jobs_failed(self, message: str) -> int:
+        """Mark all queued/running jobs as failed. Returns number updated."""
+        count = 0
+        for job in list(self._jobs.values()):
+            if job.status in ("queued", "running"):
+                job.status = "failed"
+                job.message = message
+                job.finishedAt = datetime.now(UTC).isoformat()
+                if job.storyId and self._story_active_jobs.get(job.storyId) == job.id:
+                    del self._story_active_jobs[job.storyId]
+                if job.voiceId and self._voice_active_jobs.get(job.voiceId) == job.id:
+                    del self._voice_active_jobs[job.voiceId]
+                count += 1
+        return count
 
     def update_status(
         self,
