@@ -6,5 +6,13 @@
   "child": {
     "hash": "c70ad7117b13bec6",
     "language": "English"
+  },
+  "man": {
+    "hash": "d66328ead4c43c2e",
+    "language": "English"
+  },
+  "narrator_male": {
+    "hash": "0b9377d3b8950527",
+    "language": "English"
   }
 }

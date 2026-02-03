@@ -192,6 +192,24 @@
         }
       }
     },
+    "/jobs": {
+      "get": {
+        "summary": "List active (queued/running) jobs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Job" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/{jobId}": {
       "get": {
         "summary": "Get job status by ID",

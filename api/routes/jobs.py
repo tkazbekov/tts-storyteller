@@ -5,9 +5,15 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from lib.models import Job
-from services.jobs import cancel_job, get_job
+from services.jobs import cancel_job, get_job, list_active_jobs
 
 router = APIRouter()
+
+
+@router.get("/jobs")
+async def list_jobs_endpoint() -> list[Job]:
+    """List active (queued/running) jobs. Use the Jobs UI to cancel if needed."""
+    return list_active_jobs()
 
 
 @router.get("/jobs/{jobId}")

@@ -185,8 +185,7 @@ async def generate_story_endpoint(
                 detail=(
                     f"Job already active for story '{storyId}'. "
                     f"Existing job ID: {existing_job.id}, status: {existing_job.status}. "
-                    "Wait for the current job to complete, cancel it (POST /jobs/{id}/cancel), "
-                    "or retry with ?cancel_existing=true to cancel and start a new one."
+                    "Wait for it to complete or cancel it from the Jobs page."
                 ),
             )
 

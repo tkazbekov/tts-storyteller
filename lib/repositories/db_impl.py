@@ -448,6 +448,16 @@ class DbPoolRepository:
             await session.execute(stmt)
 
 
+async def _resolve_story_id_to_uuid(session: AsyncSession, story_id: str) -> uuid.UUID | None:
+    """Resolve story_id (UUID string or slug) to story UUID."""
+    try:
+        return uuid.UUID(story_id)
+    except ValueError:
+        stmt = select(StoryModel.id).where(StoryModel.slug == story_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+
 class DbJobRepository:
     """Postgres-backed job repository."""
 
@@ -478,6 +488,9 @@ class DbJobRepository:
     async def _save_async(self, job: Job) -> None:
         async with get_session() as session:
             job_uuid = uuid.UUID(job.id)
+            story_uuid = (
+                await _resolve_story_id_to_uuid(session, job.storyId) if job.storyId else None
+            )
             stmt = select(JobModel).where(JobModel.id == job_uuid)
             result = await session.execute(stmt)
             existing = result.scalar_one_or_none()
@@ -485,7 +498,7 @@ class DbJobRepository:
             if existing:
                 existing.type = job.type
                 existing.status = job.status
-                existing.story_id = uuid.UUID(job.storyId) if job.storyId else None
+                existing.story_id = story_uuid
                 existing.voice_id = job.voiceId
                 existing.message = job.message
                 existing.output_path = job.outputPath
@@ -501,7 +514,7 @@ class DbJobRepository:
                     id=job_uuid,
                     type=job.type,
                     status=job.status,
-                    story_id=uuid.UUID(job.storyId) if job.storyId else None,
+                    story_id=story_uuid,
                     voice_id=job.voiceId,
                     message=job.message,
                     output_path=job.outputPath,
@@ -592,7 +605,7 @@ class DbJobRepository:
                 .values(status="failed", message=message, finished_at=now)
             )
             result = await session.execute(stmt)
-            return result.rowcount or 0
+            return getattr(result, "rowcount", 0) or 0
 
     async def update_status(
         self,

@@ -53,6 +53,11 @@ async def get_active_voice_job(voice_id: str) -> Job | None:
     return None
 
 
+def list_active_jobs() -> list[Job]:
+    """List all active (queued/running) jobs. In-memory only."""
+    return list(_active_jobs.values())
+
+
 async def cancel_job(job_id: str) -> Job | None:
     """
     Mark an active (queued or running) job as failed with message 'Cancelled by user'.

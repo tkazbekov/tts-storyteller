@@ -30,9 +30,10 @@ All endpoints are fully implemented in `api/main.py`:
 - `GET /stories/{storyId}` - Get story template
 - `PUT /stories/{storyId}` - Update story template (with validation)
 - `POST /stories/{storyId}/render` - Resolve roles to voices
-- `POST /stories/{storyId}/generate` - Start audio generation (async job). Query param `cancel_existing=true` cancels any active job and starts a new one.
+- `POST /stories/{storyId}/generate` - Start audio generation (async job). If a job is already active, returns 409; use the Jobs UI to cancel if needed.
+- `GET /jobs` - List active (queued/running) jobs
 - `GET /jobs/{jobId}` - Get job status
-- `POST /jobs/{jobId}/cancel` - Cancel an active (queued/running) job
+- `POST /jobs/{jobId}/cancel` - Cancel an active job (use from Jobs UI to avoid cancelling by mistake)
 - `GET /audio/stories/{storyId}/full.wav` - Download concatenated audio
 
 ### Storage model
