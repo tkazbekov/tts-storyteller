@@ -27,7 +27,6 @@ make check            # Run all checks (lint + type-check + test)
 
 # Running
 make run-api          # Start FastAPI server (localhost:8000)
-make run-demo         # Start Gradio demo
 
 # Single test
 source env.sh && pytest tests/test_basic.py -v

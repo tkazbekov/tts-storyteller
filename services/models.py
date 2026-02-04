@@ -2,62 +2,86 @@
 
 from __future__ import annotations
 
-import os
-
-from qwen_tts import Qwen3TTSModel
-
-from lib.runtime import load_tts_model
+from lib.backend_factory import TTSBackendFactory
+from lib.backends import TTSBackend
+from lib.config import get_config
 
 
 class ModelCache:
-    """Cache for base and voice design models."""
+    """Cache for multiple TTS backend instances."""
 
     def __init__(self) -> None:
-        self._base_model: Qwen3TTSModel | None = None
-        self._voice_design_model: Qwen3TTSModel | None = None
-        self._base_config: dict[str, str] = {
-            "model": os.getenv("QWEN3_TTS_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-Base"),
-            "device": os.getenv("QWEN3_TTS_DEVICE", "cuda:0"),
-            "dtype": os.getenv("QWEN3_TTS_DTYPE", "bfloat16"),
-            "attn": os.getenv("QWEN3_TTS_ATTN", "auto"),
-        }
-        self._voice_design_config: dict[str, str] = {
-            "model": os.getenv(
-                "QWEN3_TTS_VOICE_DESIGN_MODEL",
-                "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
-            ),
-            "device": os.getenv("QWEN3_TTS_DEVICE", "cuda:0"),
-            "dtype": os.getenv("QWEN3_TTS_DTYPE", "bfloat16"),
-            "attn": os.getenv("QWEN3_TTS_ATTN", "auto"),
-        }
+        # Cache backends by (backend_type, purpose) tuple
+        self._backends: dict[tuple[str, str], TTSBackend] = {}
+        self._config = get_config()
 
-    def get_base_model(self) -> Qwen3TTSModel:
-        if self._base_model is None:
-            self._base_model = load_tts_model(
-                self._base_config["model"],
-                self._base_config["device"],
-                self._base_config["dtype"],
-                self._base_config["attn"],
+    def get_backend(self, backend_type: str, purpose: str = "base") -> TTSBackend:
+        """Get or create a backend instance.
+
+        Args:
+            backend_type: Backend type ("qwen", "vibevoice")
+            purpose: Model purpose ("base", "voice_design")
+
+        Returns:
+            Cached or newly created TTSBackend instance
+
+        Example:
+            cache.get_backend("qwen", "base")        # Qwen base model
+            cache.get_backend("qwen", "voice_design") # Qwen voice design
+            cache.get_backend("vibevoice", "base")   # VibeVoice base
+        """
+        cache_key = (backend_type, purpose)
+
+        if cache_key not in self._backends:
+            # Get backend-specific config
+            backend_config = self._config.get_backend_config(backend_type, purpose)
+
+            # Create backend instance
+            self._backends[cache_key] = TTSBackendFactory.create(
+                backend_type=backend_type,
+                model_id=backend_config.model_id,
+                device=backend_config.device,
+                dtype=backend_config.dtype,
+                attn=backend_config.attn,
+                **backend_config.extras,  # Pass extras (quantization, api_key, etc.)
             )
-        return self._base_model
 
-    def get_voice_design_model(self) -> Qwen3TTSModel:
-        if self._voice_design_model is None:
-            self._voice_design_model = load_tts_model(
-                self._voice_design_config["model"],
-                self._voice_design_config["device"],
-                self._voice_design_config["dtype"],
-                self._voice_design_config["attn"],
-            )
-        return self._voice_design_model
+        return self._backends[cache_key]
+
+    def clear_cache(self) -> None:
+        """Clear all cached backends (useful for testing or memory management)."""
+        self._backends.clear()
+
+    def get_loaded_backends(self) -> list[tuple[str, str]]:
+        """Get list of currently loaded backend (type, purpose) pairs."""
+        return list(self._backends.keys())
 
 
+# Singleton instance
 _model_cache = ModelCache()
 
 
-def get_base_model() -> Qwen3TTSModel:
-    return _model_cache.get_base_model()
+def get_backend(backend_type: str, purpose: str = "base") -> TTSBackend:
+    """Get a TTS backend instance.
+
+    Args:
+        backend_type: Backend type ("qwen", "vibevoice")
+        purpose: Model purpose ("base", "voice_design")
+
+    Returns:
+        TTSBackend instance
+    """
+    return _model_cache.get_backend(backend_type, purpose)
 
 
-def get_voice_design_model() -> Qwen3TTSModel:
-    return _model_cache.get_voice_design_model()
+# Backward compatibility helpers
+def get_base_backend() -> TTSBackend:
+    """Get the default base backend (for backward compatibility)."""
+    config = get_config()
+    return _model_cache.get_backend(config.default_backend, "base")
+
+
+def get_voice_design_backend() -> TTSBackend:
+    """Get the default voice design backend (for backward compatibility)."""
+    config = get_config()
+    return _model_cache.get_backend(config.default_backend, "voice_design")

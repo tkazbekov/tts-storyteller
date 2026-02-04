@@ -1,7 +1,7 @@
 [project]
-name = "qwen3-tts"
+name = "tts-storyteller"
 version = "0.1.0"
-description = "Qwen3-TTS local playground for story generation"
+description = "Multi-backend TTS API for multi-voice story generation"
 requires-python = ">=3.12"
 dependencies = [
     "accelerate==1.12.0",
@@ -27,8 +27,6 @@ dependencies = [
     "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.2/flash_attn-2.8.3+cu128torch2.8-cp312-cp312-linux_x86_64.whl",
     "flatbuffers==25.12.19",
     "fsspec==2026.1.0",
-    "gradio==6.4.0",
-    "gradio_client==2.0.3",
     "groovy==0.1.2",
     "h11==0.16.0",
     "hf-xet==1.2.0",
@@ -84,7 +82,6 @@ dependencies = [
     "python-multipart==0.0.22",
     "pytz==2025.2",
     "PyYAML==6.0.3",
-    "qwen-tts==0.0.5",
     "regex==2026.1.15",
     "requests==2.32.5",
     "rich==14.3.1",
@@ -130,6 +127,15 @@ dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "pre-commit>=3.5.0",
+]
+qwen = [
+    "qwen-tts>=0.0.5",
+]
+vibevoice = [
+    # VibeVoice dependencies to be added
+]
+all = [
+    "qwen-tts>=0.0.5",
 ]
 
 [tool.ruff]

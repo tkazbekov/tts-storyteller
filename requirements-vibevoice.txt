@@ -1,0 +1,2 @@
+# VibeVoice backend dependencies
+# To be added when VibeVoice integration is implemented

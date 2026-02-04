@@ -5,9 +5,9 @@ from pathlib import Path
 
 
 def get_project_root() -> Path:
-    """Get the project root directory (qwen3-tts)."""
-    # Try environment variable first
-    root = os.environ.get("QWEN3_TTS_ROOT")
+    """Get the project root directory (tts-storyteller)."""
+    # Try new environment variable first, fall back to old one for backward compatibility
+    root = os.environ.get("TTS_ROOT") or os.environ.get("QWEN3_TTS_ROOT")
     if root:
         return Path(root).resolve()
 
@@ -44,14 +44,32 @@ def get_voice_metadata_path() -> Path:
     return get_voices_dir() / ".voice_metadata.json"
 
 
-def get_voice_ref_audio_path(voice_id: str) -> Path:
-    """Get the path to reference audio for a voice."""
-    return get_voice_design_dir() / f"{voice_id}.wav"
+def get_voice_ref_audio_path(voice_id: str, backend: str = "qwen") -> Path:
+    """Get the path to reference audio for a voice.
+
+    Args:
+        voice_id: Voice identifier
+        backend: TTS backend (qwen, vibevoice)
+
+    Returns:
+        Path to reference audio file in backend subdirectory
+    """
+    return get_voice_design_dir() / backend / f"{voice_id}.wav"
 
 
-def get_prompts_dir() -> Path:
-    """Get the prompts directory path."""
-    return PROJECT_ROOT / "prompts"
+def get_prompts_dir(backend: str | None = None) -> Path:
+    """Get the prompts directory path.
+
+    Args:
+        backend: Optional backend subdirectory (qwen, vibevoice)
+
+    Returns:
+        Path to prompts directory or backend subdirectory
+    """
+    base = PROJECT_ROOT / "prompts"
+    if backend:
+        return base / backend
+    return base
 
 
 def get_outputs_dir() -> Path:
@@ -64,14 +82,35 @@ def get_story_output_dir(story_id: str) -> Path:
     return PROJECT_ROOT / "outputs" / "story" / story_id
 
 
-def get_voice_design_dir() -> Path:
-    """Get the voice design output directory."""
-    return PROJECT_ROOT / "outputs" / "voice_design"
+def get_voice_design_dir(backend: str | None = None) -> Path:
+    """Get the voice design output directory.
+
+    Args:
+        backend: Optional backend subdirectory (qwen, vibevoice)
+
+    Returns:
+        Path to voice_design directory or backend subdirectory
+    """
+    base = PROJECT_ROOT / "outputs" / "voice_design"
+    if backend:
+        return base / backend
+    return base
 
 
-def get_prompt_path(voice_id: str) -> Path:
-    """Get the path to a prompt file for a voice."""
-    return get_prompts_dir() / f"{voice_id}.pt"
+def get_prompt_path(voice_id: str, backend: str = "qwen") -> Path:
+    """Get the path to a prompt file for a voice.
+
+    Args:
+        voice_id: Voice identifier
+        backend: TTS backend (qwen, vibevoice)
+
+    Returns:
+        Path to prompt file with backend-specific extension
+        - Qwen: .pt (PyTorch)
+        - VibeVoice: .json
+    """
+    ext = ".pt" if backend == "qwen" else ".json"
+    return get_prompts_dir(backend) / f"{voice_id}{ext}"
 
 
 def get_story_path(story_id: str) -> Path:
@@ -82,3 +121,13 @@ def get_story_path(story_id: str) -> Path:
 def get_story_full_audio_path(story_id: str) -> Path:
     """Get the path to the concatenated full story audio."""
     return get_story_output_dir(story_id) / "story_full.wav"
+
+
+def ensure_backend_directories() -> None:
+    """Ensure backend subdirectories exist for prompts and voice_design."""
+    backends = ["qwen", "vibevoice"]
+    for backend in backends:
+        # Create prompts/backend/
+        get_prompts_dir(backend).mkdir(parents=True, exist_ok=True)
+        # Create outputs/voice_design/backend/
+        get_voice_design_dir(backend).mkdir(parents=True, exist_ok=True)

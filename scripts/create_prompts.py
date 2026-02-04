@@ -2,7 +2,7 @@
 import argparse
 import os
 
-from common import load_tts_model, read_json, save_prompt, write_json
+from common import TTSBackendFactory, read_json, write_json
 
 DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 
@@ -13,6 +13,9 @@ def main() -> int:
     )
     parser.add_argument("--config", default="voices/voices.json", help="Path to voices config JSON")
     parser.add_argument("--out-dir", default="prompts", help="Directory for .pt prompt files")
+    parser.add_argument(
+        "--backend", default="qwen", help="TTS backend to use (qwen, vibevoice, etc.)"
+    )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Base model id")
     parser.add_argument("--device", default="cuda:0", help="Device map, e.g. cuda:0 or cpu")
     parser.add_argument("--dtype", default="bfloat16", help="bf16|fp16|fp32")
@@ -24,7 +27,14 @@ def main() -> int:
     if not isinstance(voices, list):
         raise SystemExit("voices.json must be a list")
 
-    tts = load_tts_model(args.model, args.device, args.dtype, args.attn)
+    # Create backend
+    backend = TTSBackendFactory.create(
+        backend_type=args.backend,
+        model_id=args.model,
+        device=args.device,
+        dtype=args.dtype,
+        attn=args.attn,
+    )
 
     meta_out = []
     for v in voices:
@@ -42,13 +52,14 @@ def main() -> int:
         if not args.xvec_only and not ref_text:
             raise SystemExit("ref_text is required when not using x-vector only")
 
-        items = tts.create_voice_clone_prompt(
+        voice_prompt = backend.create_voice_clone_prompt(
             ref_audio=ref_audio,
             ref_text=ref_text,
             x_vector_only_mode=bool(args.xvec_only),
         )
+        voice_prompt.voice_id = voice_id
         out_path = os.path.join(args.out_dir, f"{voice_id}.pt")
-        save_prompt(out_path, items)
+        backend.save_prompt(voice_prompt, out_path)
         print(f"Wrote {out_path}")
 
         meta_out.append(

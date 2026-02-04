@@ -2,7 +2,7 @@
 import argparse
 import os
 
-from common import load_tts_model, read_json, save_wav, write_json
+from common import TTSBackendFactory, read_json, save_wav, write_json
 
 DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
 
@@ -12,6 +12,9 @@ def main() -> int:
     parser.add_argument("--config", default="voices/voices.json", help="Path to voices config JSON")
     parser.add_argument(
         "--out-dir", default="outputs/voice_design", help="Directory for generated WAV files"
+    )
+    parser.add_argument(
+        "--backend", default="qwen", help="TTS backend to use (qwen, vibevoice, etc.)"
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="VoiceDesign model id")
     parser.add_argument("--device", default="cuda:0", help="Device map, e.g. cuda:0 or cpu")
@@ -24,7 +27,14 @@ def main() -> int:
     if not isinstance(voices, list):
         raise SystemExit("voices.json must be a list")
 
-    tts = load_tts_model(args.model, args.device, args.dtype, args.attn)
+    # Create backend
+    backend = TTSBackendFactory.create(
+        backend_type=args.backend,
+        model_id=args.model,
+        device=args.device,
+        dtype=args.dtype,
+        attn=args.attn,
+    )
 
     meta_out = []
     for v in voices:
@@ -41,14 +51,14 @@ def main() -> int:
         if args.max_new_tokens is not None:
             kwargs["max_new_tokens"] = args.max_new_tokens
 
-        wavs, sr = tts.generate_voice_design(
+        result = backend.generate_voice_design(
             text=text,
             language=language,
-            instruct=instruct,
+            instruction=instruct,
             **kwargs,
         )
         out_path = os.path.join(args.out_dir, f"{voice_id}.wav")
-        save_wav(out_path, wavs[0], sr)
+        save_wav(out_path, result.audio, result.sample_rate)
 
         meta_out.append(
             {

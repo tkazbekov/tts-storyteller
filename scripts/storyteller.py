@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import sys
 
+from lib.backend_factory import TTSBackendFactory
 from lib.env import load_env
 from lib.generation import generate_story_audio
 from lib.repositories import get_story_repository, get_voice_repository
@@ -32,14 +33,20 @@ async def run_async(args: argparse.Namespace) -> int:
     try:
         story, resolved_lines = await _resolve_story_async(args.story)
 
+        # Create backend
+        backend = TTSBackendFactory.create(
+            backend_type=args.backend,
+            model_id=args.model,
+            device=args.device,
+            dtype=args.dtype,
+            attn=args.attn,
+        )
+
         output_path = await asyncio.to_thread(
             generate_story_audio,
             resolved_lines=resolved_lines,
             story_id=args.story,
-            model=args.model,
-            device=args.device,
-            dtype=args.dtype,
-            attn=args.attn,
+            tts_backend=backend,
             language=args.language,
             concat=not args.no_concat,
         )
@@ -71,6 +78,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--story", required=True, help="Story ID (filename without .json extension)"
+    )
+    parser.add_argument(
+        "--backend", default="qwen", help="TTS backend to use (qwen, vibevoice, etc.)"
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Base model id")
     parser.add_argument("--device", default="cuda:0", help="Device map, e.g. cuda:0 or cpu")

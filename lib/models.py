@@ -110,6 +110,7 @@ class VoiceConfig(BaseModel):
     language: str = Field(..., min_length=1, description="Language for this voice")
     instruction: str = Field(..., min_length=1, description="Voice instruction/prompt")
     sample_text: str = Field(..., min_length=1, description="Sample text for voice generation")
+    backend: str = Field("qwen", description="TTS backend to use (qwen, vibevoice)")
 
 
 class Voice(BaseModel):
@@ -119,6 +120,7 @@ class Voice(BaseModel):
     language: str = Field(..., description="Language for this voice")
     instruction: str = Field(..., description="Voice instruction/prompt")
     sample_text: str | None = Field(None, description="Sample text for this voice")
+    backend: str = Field("qwen", description="TTS backend (qwen, vibevoice)")
     promptPath: str | None = Field(None, description="Path to prompt file")
     refAudioPath: str | None = Field(None, description="Path to reference audio")
 

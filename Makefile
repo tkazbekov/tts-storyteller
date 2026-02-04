@@ -1,4 +1,4 @@
-.PHONY: help install dev-install lint format type-check test clean run-api run-demo check-venv
+.PHONY: help install dev-install lint format type-check test clean run-api check-venv
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -61,9 +61,6 @@ clean: ## Clean cache and temporary files
 
 run-api: check-venv ## Run the FastAPI server
 	bash -c 'source env.sh && python api/main.py'
-
-run-demo: ## Run the Gradio demo
-	./run.sh
 
 apply-migrations: check-venv ## Run Alembic migrations (requires DATABASE_URL in .env)
 	bash -c 'source env.sh && alembic upgrade head'

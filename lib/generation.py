@@ -2,23 +2,19 @@
 
 import subprocess
 from pathlib import Path
+from typing import Any
 
-from qwen_tts import Qwen3TTSModel
-
+from lib.backends import TTSBackend
 from lib.incremental import get_existing_audio_files
 from lib.models import ResolvedLine
 from lib.paths import get_prompt_path, get_story_output_dir
-from lib.runtime import load_prompt, load_tts_model, save_wav
+from lib.runtime import save_wav
 
 
 def generate_story_audio(
     resolved_lines: list[ResolvedLine],
     story_id: str,
-    tts_model: Qwen3TTSModel | None = None,
-    model_id: str = "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
-    device: str = "cuda:0",
-    dtype: str = "bfloat16",
-    attn: str = "auto",
+    tts_backend: TTSBackend | None = None,
     language: str = "English",
     concat: bool = True,
     regenerate_indices: set[int] | None = None,
@@ -29,11 +25,7 @@ def generate_story_audio(
     Args:
         resolved_lines: List of resolved lines with voice assignments
         story_id: Story identifier (used for output directory)
-        tts_model: Optional pre-loaded TTS model instance (for caching)
-        model_id: TTS model ID (used if tts_model is None)
-        device: Device to use (e.g., "cuda:0" or "cpu")
-        dtype: Data type (bf16|fp16|fp32)
-        attn: Attention implementation (auto|none|flash_attention_2)
+        tts_backend: Optional pre-loaded TTS backend instance (for caching)
         language: Language for generation (defaults to English)
         concat: Whether to concatenate outputs into one WAV
         regenerate_indices: Optional set of 0-based line indices to regenerate.
@@ -46,15 +38,16 @@ def generate_story_audio(
     Raises:
         FileNotFoundError: If prompt files are missing
         RuntimeError: If sox is not available and concat=True
+        ValueError: If no backend provided and can't create default
     """
     if not resolved_lines:
         raise ValueError("No lines to generate")
 
-    # Use provided model or load new one
-    if tts_model is None:
-        tts = load_tts_model(model_id, device, dtype, attn)
-    else:
-        tts = tts_model
+    # Use provided backend or create default
+    if tts_backend is None:
+        from lib.backend_factory import TTSBackendFactory
+
+        tts_backend = TTSBackendFactory.create()
 
     # Setup output directory
     out_dir = get_story_output_dir(story_id)
@@ -67,7 +60,7 @@ def generate_story_audio(
 
     # Generate audio for each line
     out_files: list[str] = []
-    prompt_cache: dict[str, list] = {}
+    prompt_cache: dict[str, Any] = {}
 
     for idx, resolved_line in enumerate(resolved_lines):
         # Check if we should reuse existing file
@@ -84,21 +77,23 @@ def generate_story_audio(
 
         # Load prompt if not cached
         if voice_id not in prompt_cache:
-            prompt_path = get_prompt_path(voice_id)
+            # Try to get prompt path with backend from tts_backend
+            backend_name = tts_backend.backend_name
+            prompt_path = get_prompt_path(voice_id, backend_name)
             if not prompt_path.exists():
                 raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
-            prompt_cache[voice_id] = load_prompt(str(prompt_path))
+            prompt_cache[voice_id] = tts_backend.load_prompt(prompt_path)
 
         # Generate audio
-        wavs, sr = tts.generate_voice_clone(
+        result = tts_backend.generate_voice_clone(
             text=text,
             language=language,
-            voice_clone_prompt=prompt_cache[voice_id],
+            voice_prompt=prompt_cache[voice_id],
         )
 
         # Save individual line audio (1-based index for filename)
         out_path = out_dir / f"{idx + 1:03d}_{voice_id}.wav"
-        save_wav(str(out_path), wavs[0], sr)
+        save_wav(str(out_path), result.audio, result.sample_rate)
         out_files.append(str(out_path))
 
     # Concatenate if requested

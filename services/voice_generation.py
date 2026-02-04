@@ -8,19 +8,31 @@ from pathlib import Path
 from lib.models import VoiceConfig
 from lib.repositories import get_voice_repository
 from lib.voice_generation import generate_voice
-from services.models import get_base_model, get_voice_design_model
+from services.models import get_backend
 
 
 async def generate_voice_job(voice_id: str, voice_config: VoiceConfig) -> Path:
-    voice_design_model = get_voice_design_model()
-    base_model = get_base_model()
+    """Generate voice with specified backend.
+
+    Args:
+        voice_id: Voice identifier
+        voice_config: Voice configuration including backend
+
+    Returns:
+        Path to generated prompt file
+    """
+    backend_type = voice_config.backend
+
+    # Get backend instances for this backend type
+    voice_design_backend = get_backend(backend_type, "voice_design")
+    base_backend = get_backend(backend_type, "base")
 
     wav_path, prompt_path = await asyncio.to_thread(
         generate_voice,
         voice_id=voice_id,
         voice_config=voice_config,
-        voice_design_model=voice_design_model,
-        base_model=base_model,
+        voice_design_backend=voice_design_backend,
+        base_backend=base_backend,
         force_regenerate=False,
     )
 

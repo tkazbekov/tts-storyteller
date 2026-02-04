@@ -19,6 +19,11 @@ load_env()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI startup/shutdown."""
+    # Ensure backend directories exist
+    from lib.paths import ensure_backend_directories
+
+    ensure_backend_directories()
+
     # Initialize database (DATABASE_URL is required)
     await init_database()
     recovered = await recover_jobs_on_startup()
@@ -34,9 +39,9 @@ async def lifespan(app: FastAPI):
     await close_database()
 
 
-app = FastAPI(title="Qwen3-TTS Home API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="TTS Storyteller API", version="0.1.0", lifespan=lifespan)
 
-_cors_origins_env = os.getenv("QWEN3_TTS_CORS_ORIGINS", "*")
+_cors_origins_env = os.getenv("TTS_CORS_ORIGINS") or os.getenv("QWEN3_TTS_CORS_ORIGINS", "*")
 _cors_origins = (
     ["*"]
     if _cors_origins_env == "*"

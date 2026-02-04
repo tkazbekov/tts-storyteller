@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FastAPI entrypoint for Qwen3-TTS."""
+"""FastAPI entrypoint for TTS Storyteller API."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from api.app import app
 if __name__ == "__main__":
     import uvicorn
 
-    host = os.getenv("QWEN3_TTS_HOST", "0.0.0.0")
-    port = int(os.getenv("QWEN3_TTS_PORT", "8000"))
+    host = os.getenv("TTS_HOST") or os.getenv("QWEN3_TTS_HOST") or "0.0.0.0"
+    port_str = os.getenv("TTS_PORT") or os.getenv("QWEN3_TTS_PORT") or "8000"
+    port = int(port_str)
     uvicorn.run(app, host=host, port=port)

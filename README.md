@@ -52,22 +52,6 @@ http://localhost:8000/docs  # Interactive API docs
 http://localhost:8000        # API root
 ```
 
-### Run the Gradio demo
-
-```bash
-make run-demo
-# or
-./run.sh
-```
-
-`run.sh` uses the `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` model by default and starts
-`qwen-tts-demo` on `0.0.0.0:8000`. You can override:
-
-```bash
-IP=127.0.0.1 PORT=8001 ./run.sh
-./run.sh Qwen/Qwen3-TTS-12Hz-1.7B-Base
-```
-
 ## Development workflow
 
 ### Code quality tools
