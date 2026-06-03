@@ -1,13 +1,58 @@
-"""Audio download routes."""
+"""Audio download and upload routes."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+import shutil
+from pathlib import Path
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from lib.paths import get_story_full_audio_path, get_story_output_dir, get_voice_ref_audio_path
 
 router = APIRouter()
+
+# Upload directory for reference audio files
+UPLOAD_DIR = Path("uploads/reference_audio")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@router.post("/audio/upload")
+async def upload_reference_audio(file: UploadFile = File(...)) -> dict[str, str]:  # noqa: B008
+    """
+    Upload a reference audio file for voice cloning.
+
+    Accepts WAV files. Returns the file path to use in ref_audio_url.
+
+    Returns:
+        {"file_path": "uploads/reference_audio/filename.wav"}
+    """
+    # Validate file type
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    if not file.filename.lower().endswith(".wav"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only WAV files are supported. Please upload a .wav file.",
+        )
+
+    # Save file
+    file_path = UPLOAD_DIR / file.filename
+    try:
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save file: {str(e)}",
+        ) from e
+
+    return {
+        "file_path": str(file_path),
+        "filename": file.filename,
+        "message": f"File uploaded successfully. Use this path in ref_audio_url: {file_path}",
+    }
 
 
 @router.get("/audio/voices/{voiceId}.wav")

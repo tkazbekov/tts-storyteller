@@ -115,13 +115,17 @@ Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish
 
 ## VibeVoice-7B
 
+### Status
+
+✅ **Implemented** - Using community fork ([vibevoice-community/VibeVoice](https://github.com/vibevoice-community/VibeVoice))
+
 ### Model Information
 
-- **Model ID:** `vibevoice/VibeVoice-7B`
-- **Parameters:** ~9B total (7B LLM + 2B tokenizers/diffusion)
+- **Model ID:** `vibevoice/VibeVoice-7B` or `vibevoice/VibeVoice-1.5B`
+- **Parameters:** ~9B total (7B) / ~1.5B (1.5B variant)
 - **Size:** 18.7 GB (full) / ~5 GB (4-bit)
 - **License:** MIT
-- **Package:** Custom implementation (official code temporarily unavailable)
+- **Package:** `git+https://github.com/vibevoice-community/VibeVoice.git`
 
 ### Architecture
 
@@ -186,29 +190,60 @@ TTS_VIBEVOICE_DIFFUSION_STEPS=50
 
 **Size:** ~50KB - 500KB per voice
 
+### Installation
+
+```bash
+pip install -r requirements-vibevoice.txt
+```
+
 ### API Usage
 
-**Note:** Implementation pending. Expected API:
-
 ```python
-# Expected usage (to be implemented)
-from vibevoice import VibeVoiceModel
+from lib.backend_factory import TTSBackendFactory
 
-model = VibeVoiceModel.from_pretrained(
-    "vibevoice/VibeVoice-7B",
-    device_map="cuda:0",
-    torch_dtype=torch.float16,
-    load_in_4bit=True,
+# Create backend
+backend = TTSBackendFactory.create(
+    backend_type="vibevoice",
+    model_id="vibevoice/VibeVoice-1.5B",
+    device="cuda:0",
+    dtype="float16",
+    quantization="4bit",
+    cfg_scale=1.3,
+    diffusion_steps=10,
 )
 
-# Multi-speaker generation
-audio, sr = model.generate(
-    script=[
-        {"speaker": "Speaker1", "text": "Hello!"},
-        {"speaker": "Speaker2", "text": "Hi there!"},
-    ],
-    speaker_profiles={...}
+# Create voice prompt from reference audio
+prompt = backend.create_voice_clone_prompt(
+    ref_audio="reference.wav",
+    ref_text=None,  # Optional
 )
+
+# Generate speech
+result = backend.generate_voice_clone(
+    text="Hello world",
+    language="English",
+    voice_prompt=prompt,
+)
+
+# Save audio
+import soundfile as sf
+sf.write("output.wav", result.audio, result.sample_rate)
+```
+
+### CLI Testing
+
+```bash
+# Test with reference audio
+python scripts/test_vibevoice.py \
+  --ref-audio outputs/voice_design/qwen/narrator_male.wav \
+  --text "Testing VibeVoice backend" \
+  --output test.wav
+
+# Use 7B model for better quality
+python scripts/test_vibevoice.py \
+  --ref-audio reference.wav \
+  --model vibevoice/VibeVoice-7B \
+  --quantization 4bit
 ```
 
 ### Languages
@@ -223,6 +258,14 @@ English (native), Chinese (native)
 - Long-form content (podcasts, audiobooks)
 - Natural conversation
 - English/Chinese content
+
+### Limitations
+
+- ❌ No voice design from text descriptions (use Qwen backend for this)
+- ⚠️ Slower than Qwen (~5-10s per line vs ~2s)
+- ⚠️ Requires reference WAV files for voice cloning
+- ✅ Multi-speaker support (up to 4 speakers)
+- ✅ Long-form generation (up to 90 minutes)
 
 ---
 

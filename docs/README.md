@@ -43,6 +43,12 @@ make run-api
 - Configuration reference
 - Performance comparison
 
+**[SWAGGER.md](SWAGGER.md)** - Interactive API documentation
+- Swagger UI usage
+- API endpoints reference
+- Request/response examples
+- Backend field usage
+
 **[web-app.md](web-app.md)** - Web application documentation
 
 ---

@@ -104,12 +104,36 @@ class ResolvedLine(BaseModel):
 
 
 class VoiceConfig(BaseModel):
-    """Voice configuration for creation/update."""
+    """Voice configuration for creation/update using voice design (Qwen only)."""
 
     id: str = Field(..., min_length=1, description="Voice identifier")
     language: str = Field(..., min_length=1, description="Language for this voice")
     instruction: str = Field(..., min_length=1, description="Voice instruction/prompt")
     sample_text: str = Field(..., min_length=1, description="Sample text for voice generation")
+    backend: str = Field(
+        "qwen",
+        description="TTS backend to use (qwen only - vibevoice not supported for voice design)",
+    )
+
+
+class VoiceCloneConfig(BaseModel):
+    """Voice configuration for voice cloning from reference audio (works with all backends).
+
+    Workflow:
+    1. Upload reference audio: POST /audio/upload (returns file_path)
+    2. Use file_path in ref_audio_url field
+    3. Create voice clone: POST /voices/clone
+    """
+
+    id: str = Field(..., min_length=1, description="Voice identifier")
+    language: str = Field(..., min_length=1, description="Language for this voice")
+    instruction: str = Field(..., min_length=1, description="Voice description/notes")
+    ref_audio_url: str = Field(
+        ...,
+        min_length=1,
+        description="Path to reference audio file (WAV format). Upload via POST /audio/upload first to get the path.",
+    )
+    ref_text: str | None = Field(None, description="Optional transcript of reference audio")
     backend: str = Field("qwen", description="TTS backend to use (qwen, vibevoice)")
 
 

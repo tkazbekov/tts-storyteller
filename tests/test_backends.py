@@ -143,35 +143,28 @@ class TestVibeVoiceBackend:
     def test_vibevoice_backend_initialization(self):
         """Test VibeVoice backend initialization."""
         backend = VibeVoiceBackend(
-            api_key="test_key",
-            model_id="default",
+            model_id="vibevoice/VibeVoice-1.5B",
             device="cpu",
+            dtype="float32",
+            quantization="4bit",
+            cfg_scale=1.5,
+            diffusion_steps=20,
         )
         assert backend.backend_name == "vibevoice"
-        assert backend.api_key == "test_key"
-        assert backend.model_id == "default"
+        assert backend.model_id == "vibevoice/VibeVoice-1.5B"
         assert backend.device == "cpu"
+        assert backend.dtype == "float32"
+        assert backend.quantization == "4bit"
+        assert backend.cfg_scale == 1.5
+        assert backend.diffusion_steps == 20
 
     def test_vibevoice_methods_not_implemented(self):
-        """Test that VibeVoice methods raise NotImplementedError."""
+        """Test that VibeVoice voice design is not supported."""
         backend = VibeVoiceBackend(model_id="default", device="cpu")
 
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
+        # Voice design is not supported
+        with pytest.raises(NotImplementedError, match="does not support voice design"):
             backend.generate_voice_design("text", "English", "instruction")
-
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
-            backend.create_voice_clone_prompt("audio.wav", "text")
-
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
-            prompt = VoicePrompt(backend="vibevoice", voice_id="test", data={})
-            backend.generate_voice_clone("text", "English", prompt)
-
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
-            prompt = VoicePrompt(backend="vibevoice", voice_id="test", data={})
-            backend.save_prompt(prompt, "test.pt")
-
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
-            backend.load_prompt("test.pt")
 
 
 class TestDataClasses:

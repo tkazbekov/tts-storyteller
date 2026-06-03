@@ -39,7 +39,12 @@ async def lifespan(app: FastAPI):
     await close_database()
 
 
-app = FastAPI(title="TTS Storyteller API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="TTS Storyteller API",
+    version="0.1.0",
+    description="Multi-backend TTS API supporting Qwen3-TTS and VibeVoice for voice-driven story generation with parallel execution",
+    lifespan=lifespan,
+)
 
 _cors_origins_env = os.getenv("TTS_CORS_ORIGINS") or os.getenv("QWEN3_TTS_CORS_ORIGINS", "*")
 _cors_origins = (

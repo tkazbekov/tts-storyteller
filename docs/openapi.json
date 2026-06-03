@@ -1,25 +1,112 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Qwen3-TTS Home API",
-    "version": "0.1.0",
-    "description": "Local API for managing voices, story templates, and TTS generation."
+    "title": "TTS Storyteller API",
+    "description": "Multi-backend TTS API supporting Qwen3-TTS and VibeVoice for voice-driven story generation with parallel execution",
+    "version": "0.1.0"
   },
-  "servers": [
-    { "url": "http://localhost:8000" }
-  ],
   "paths": {
-    "/voices": {
+    "/health": {
       "get": {
-        "summary": "List all available voices",
+        "summary": "Health",
+        "operationId": "health_health_get",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices": {
+      "get": {
+        "summary": "List Voices",
+        "description": "List all available voices, optionally filtered by pool.\n\nArgs:\n    pool: Optional pool name to filter voices",
+        "operationId": "list_voices_voices_get",
+        "parameters": [
+          {
+            "name": "pool",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pool"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/Voice" }
+                  "items": {
+                    "$ref": "#/components/schemas/Voice"
+                  },
+                  "title": "Response List Voices Voices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Voice Endpoint",
+        "description": "Create a new voice using voice design (Qwen only).\n\nGenerates voice from text description. Not supported for VibeVoice backend.\nFor VibeVoice, use POST /voices/clone instead.\n\nGenerates WAV and prompt files, updates voices.json.\nReturns a job ID to track generation progress.",
+        "operationId": "create_voice_endpoint_voices_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -29,34 +116,218 @@
     },
     "/voices/{voiceId}": {
       "get": {
-        "summary": "Get voice details by ID",
+        "summary": "Get Voice Endpoint",
+        "description": "Get voice details by ID.",
+        "operationId": "get_voice_endpoint_voices__voiceId__get",
         "parameters": [
-          { "$ref": "#/components/parameters/voiceId" }
+          {
+            "name": "voiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Voiceid"
+            }
+          }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Voice" }
+                "schema": {
+                  "$ref": "#/components/schemas/Voice"
+                }
               }
             }
           },
-          "404": { "description": "Voice not found" }
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Voice Endpoint",
+        "description": "Update an existing voice configuration.\n\nIf config changed, triggers regeneration job.\nOtherwise, just updates voices.json.",
+        "operationId": "update_voice_endpoint_voices__voiceId__put",
+        "parameters": [
+          {
+            "name": "voiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Voiceid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Voice Endpoint",
+        "description": "Delete a voice.\n\nRemoves from voices.json and all pools.\nDoes not delete WAV or prompt files.",
+        "operationId": "delete_voice_endpoint_voices__voiceId__delete",
+        "parameters": [
+          {
+            "name": "voiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Voiceid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
-    "/stories": {
+    "/voices/clone": {
+      "post": {
+        "summary": "Clone Voice Endpoint",
+        "description": "Create a new voice using voice cloning from reference audio.\n\nWorks with all backends (qwen, vibevoice). Requires reference audio file.\nGenerates prompt from reference audio, updates voices.json.\nReturns a job ID to track generation progress.",
+        "operationId": "clone_voice_endpoint_voices_clone_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceCloneConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/pools": {
       "get": {
-        "summary": "List all story IDs",
+        "summary": "List Pools Endpoint",
+        "description": "List all available voice pools.",
+        "operationId": "list_pools_endpoint_voices_pools_get",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "title": "Response List Pools Endpoint Voices Pools Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/pools/{poolName}": {
+      "get": {
+        "summary": "Get Pool Endpoint",
+        "description": "Get all voices in a pool.",
+        "operationId": "get_pool_endpoint_voices_pools__poolName__get",
+        "parameters": [
+          {
+            "name": "poolName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Poolname"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "type": "string" }
+                  "items": {
+                    "$ref": "#/components/schemas/Voice"
+                  },
+                  "title": "Response Get Pool Endpoint Voices Pools  Poolname  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -64,145 +335,410 @@
         }
       },
       "post": {
-        "summary": "Create a new story template",
-        "description": "Create a new story template. Use the 'casting' field to map roleIds (as strings) to voiceIds. Resolution order: line.actorId → casting[roleId] → defaultVoiceId. Example casting: {'0': 'narrator_male', '1': 'woman'}.",
+        "summary": "Create Pool Endpoint",
+        "description": "Create a new pool.",
+        "operationId": "create_pool_endpoint_voices_pools__poolName__post",
+        "parameters": [
+          {
+            "name": "poolName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Poolname"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+              "schema": {
+                "$ref": "#/components/schemas/VoicePool"
+              }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created",
+            "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+                "schema": {
+                  "$ref": "#/components/schemas/VoicePool"
+                }
               }
             }
           },
-          "400": { "description": "Validation error" },
-          "409": { "description": "Story already exists" }
-        }
-      }
-    },
-    "/stories/{storyId}": {
-      "get": {
-        "summary": "Get story template by ID",
-        "parameters": [
-          { "$ref": "#/components/parameters/storyId" }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
-          },
-          "404": { "description": "Story not found" }
+          }
         }
       },
       "put": {
-        "summary": "Replace an existing story template",
+        "summary": "Update Pool Endpoint",
+        "description": "Update an existing pool.",
+        "operationId": "update_pool_endpoint_voices_pools__poolName__put",
         "parameters": [
-          { "$ref": "#/components/parameters/storyId" }
+          {
+            "name": "poolName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Poolname"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+              "schema": {
+                "$ref": "#/components/schemas/VoicePool"
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StoryTemplate" }
+                "schema": {
+                  "$ref": "#/components/schemas/VoicePool"
+                }
               }
             }
           },
-          "400": { "description": "Validation error" },
-          "404": { "description": "Story not found" }
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Pool Endpoint",
+        "description": "Delete a pool.",
+        "operationId": "delete_pool_endpoint_voices_pools__poolName__delete",
+        "parameters": [
+          {
+            "name": "poolName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Poolname"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stories": {
+      "get": {
+        "summary": "List Stories Endpoint",
+        "description": "List all stories.\n\nReturns story summaries with id, slug, and title.",
+        "operationId": "list_stories_endpoint_stories_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StorySummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Stories Endpoint Stories Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Story Endpoint",
+        "description": "Create a new story template.\n\nVoice assignment: Use the `casting` field to map roleIds (as strings) to voiceIds.\nResolution order: line.actorId \u2192 casting[roleId] \u2192 defaultVoiceId\n\nExample casting: {\"0\": \"narrator_male\", \"1\": \"woman\"} assigns roleId 0 to narrator_male, roleId 1 to woman.\n\nReturns the story with server-generated `id` (UUID) and `slug` fields.",
+        "operationId": "create_story_endpoint_stories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoryTemplate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryTemplate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stories/{identifier}": {
+      "get": {
+        "summary": "Get Story Endpoint",
+        "description": "Get story template by ID or slug.\n\nThe identifier can be either:\n- A UUID (e.g., \"550e8400-e29b-41d4-a716-446655440000\")\n- A slug (e.g., \"my_story_title\")",
+        "operationId": "get_story_endpoint_stories__identifier__get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryTemplate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stories/{storyId}": {
+      "put": {
+        "summary": "Replace Story Endpoint",
+        "description": "Replace an existing story template.",
+        "operationId": "replace_story_endpoint_stories__storyId__put",
+        "parameters": [
+          {
+            "name": "storyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Storyid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoryTemplate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryTemplate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/stories/{storyId}/render": {
       "post": {
-        "summary": "Resolve roles to voices for a story",
-        "description": "Returns a preview of voice assignments showing which voice will be used for each line. Resolution order: line.actorId → casting[roleId] → defaultVoiceId. Use this endpoint to verify voice assignments before generating audio.",
+        "summary": "Render Story Endpoint",
+        "description": "Resolve roles to voices for a story.\n\nReturns a preview of voice assignments showing which voice will be used for each line.\nResolution order: line.actorId \u2192 casting[roleId] \u2192 defaultVoiceId\n\nUse this endpoint to verify voice assignments before generating audio.",
+        "operationId": "render_story_endpoint_stories__storyId__render_post",
         "parameters": [
-          { "$ref": "#/components/parameters/storyId" }
+          {
+            "name": "storyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Storyid"
+            }
+          }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/ResolvedLine" }
+                  "items": {
+                    "$ref": "#/components/schemas/ResolvedLine"
+                  },
+                  "title": "Response Render Story Endpoint Stories  Storyid  Render Post"
                 }
               }
             }
           },
-          "400": { "description": "Resolution error" },
-          "404": { "description": "Story not found" }
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/stories/{storyId}/generate": {
       "post": {
-        "summary": "Start audio generation for a story",
+        "summary": "Generate Story Endpoint",
+        "description": "Start audio generation for a story.\n\nOnly one job per story can be running or queued at a time.\nIf a job is already active for this story, returns 409 Conflict unless\ncancel_existing=true, in which case the active job is cancelled and a new one is started.",
+        "operationId": "generate_story_endpoint_stories__storyId__generate_post",
         "parameters": [
-          { "$ref": "#/components/parameters/storyId" },
+          {
+            "name": "storyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Storyid"
+            }
+          },
           {
             "name": "cancel_existing",
             "in": "query",
             "required": false,
-            "schema": { "type": "boolean", "default": false },
-            "description": "If true, cancel any active job for this story and start a new one"
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Cancel Existing"
+            }
           }
         ],
         "requestBody": {
-          "required": false,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/GenerateRequest" }
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/GenerateRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
             }
           }
         },
         "responses": {
           "202": {
-            "description": "Accepted",
+            "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Job" }
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
               }
             }
           },
-          "404": { "description": "Story not found" },
-          "409": { "description": "Job already active for this story (unless cancel_existing=true)" }
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/jobs": {
       "get": {
-        "summary": "List active (queued/running) jobs",
+        "summary": "List Jobs Endpoint",
+        "description": "List active (queued/running) jobs. Use the Jobs UI to cancel if needed.",
+        "operationId": "list_jobs_endpoint_jobs_get",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Job"
+                  },
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/Job" }
+                  "title": "Response List Jobs Endpoint Jobs Get"
                 }
               }
             }
@@ -212,138 +748,713 @@
     },
     "/jobs/{jobId}": {
       "get": {
-        "summary": "Get job status by ID",
+        "summary": "Get Job Endpoint",
+        "description": "Get job status by ID.",
+        "operationId": "get_job_endpoint_jobs__jobId__get",
         "parameters": [
-          { "$ref": "#/components/parameters/jobId" }
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Jobid"
+            }
+          }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Job" }
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
               }
             }
           },
-          "404": { "description": "Job not found" }
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/jobs/{jobId}/cancel": {
       "post": {
-        "summary": "Cancel an active (queued or running) job",
+        "summary": "Cancel Job Endpoint",
+        "description": "Cancel an active (queued or running) job.\nMarks the job as failed with message 'Cancelled by user'.\nReturns 404 if job not found, 409 if job is not active (already finished).",
+        "operationId": "cancel_job_endpoint_jobs__jobId__cancel_post",
         "parameters": [
-          { "$ref": "#/components/parameters/jobId" }
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Jobid"
+            }
+          }
         ],
         "responses": {
           "200": {
-            "description": "Job cancelled",
+            "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Job" }
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
               }
             }
           },
-          "404": { "description": "Job not found" },
-          "409": { "description": "Job is not active (already finished)" }
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/audio/upload": {
+      "post": {
+        "summary": "Upload Reference Audio",
+        "description": "Upload a reference audio file for voice cloning.\n\nAccepts WAV files. Returns the file path to use in ref_audio_url.\n\nReturns:\n    {\"file_path\": \"uploads/reference_audio/filename.wav\"}",
+        "operationId": "upload_reference_audio_audio_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_reference_audio_audio_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Upload Reference Audio Audio Upload Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/audio/voices/{voiceId}.wav": {
+      "get": {
+        "summary": "Get Voice Audio",
+        "description": "Download the reference/sample audio for a voice.\n\nReturns 404 if the voice has not been generated yet (no WAV file).",
+        "operationId": "get_voice_audio_audio_voices__voiceId__wav_get",
+        "parameters": [
+          {
+            "name": "voiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Voiceid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/audio/stories/{storyId}/full.wav": {
       "get": {
-        "summary": "Download the concatenated audio file for a story",
+        "summary": "Get Story Audio",
+        "description": "Download the concatenated audio file for a story.\n\nNote: This endpoint only works if the story was generated with `concat: true`.\nIf `concat: false`, individual audio files are in the output directory but\nno concatenated file exists. Use `/audio/stories/{storyId}/files` to list individual files.",
+        "operationId": "get_story_audio_audio_stories__storyId__full_wav_get",
         "parameters": [
-          { "$ref": "#/components/parameters/storyId" }
+          {
+            "name": "storyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Storyid"
+            }
+          }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successful Response",
             "content": {
-              "audio/wav": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "type": "string",
-                  "format": "binary"
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/audio/stories/{storyId}/files": {
+      "get": {
+        "summary": "List Story Audio Files",
+        "description": "List all individual audio files for a story.\n\nReturns a list of filenames in the story's output directory.\nThese are the individual line audio files (e.g., \"001_narrator_male.wav\").",
+        "operationId": "list_story_audio_files_audio_stories__storyId__files_get",
+        "parameters": [
+          {
+            "name": "storyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Storyid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Story Audio Files Audio Stories  Storyid  Files Get"
                 }
               }
             }
           },
-          "404": { "description": "Audio not found" }
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/audio/stories/{storyId}/files/{filename}": {
+      "get": {
+        "summary": "Get Story Audio File",
+        "description": "Download a specific individual audio file for a story.\n\nUse GET /audio/stories/{storyId}/files to list available filenames.",
+        "operationId": "get_story_audio_file_audio_stories__storyId__files__filename__get",
+        "parameters": [
+          {
+            "name": "storyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Storyid"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         }
       }
     }
   },
   "components": {
-    "parameters": {
-      "voiceId": {
-        "name": "voiceId",
-        "in": "path",
-        "required": true,
-        "schema": { "type": "string" }
-      },
-      "storyId": {
-        "name": "storyId",
-        "in": "path",
-        "required": true,
-        "schema": { "type": "string" }
-      },
-      "jobId": {
-        "name": "jobId",
-        "in": "path",
-        "required": true,
-        "schema": { "type": "string" }
-      }
-    },
     "schemas": {
-      "Voice": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id"],
+      "Body_upload_reference_audio_audio_upload_post": {
         "properties": {
-          "id": { "type": "string" },
-          "promptPath": { "type": "string", "nullable": true },
-          "refAudioPath": { "type": "string", "nullable": true }
-        }
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_reference_audio_audio_upload_post"
+      },
+      "GenerateRequest": {
+        "properties": {
+          "concat": {
+            "type": "boolean",
+            "title": "Concat",
+            "description": "Whether to concatenate outputs",
+            "default": true
+          },
+          "concatOut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concatout",
+            "description": "Output path for concatenated audio"
+          }
+        },
+        "type": "object",
+        "title": "GenerateRequest",
+        "description": "Request body for story generation."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Job": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Job identifier"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Job type (e.g., 'generate', 'voice_generate')"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Job status: queued, running, succeeded, failed"
+          },
+          "storyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storyid",
+            "description": "Associated story ID"
+          },
+          "voiceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voiceid",
+            "description": "Associated voice ID"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message",
+            "description": "Status message or error"
+          },
+          "outputPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputpath",
+            "description": "Path to generated audio file"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat",
+            "description": "Job creation timestamp (ISO 8601)"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedat",
+            "description": "Job start timestamp (ISO 8601)"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat",
+            "description": "Job completion timestamp (ISO 8601)"
+          },
+          "requestParams": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestparams",
+            "description": "Request parameters for generation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status",
+          "createdAt"
+        ],
+        "title": "Job",
+        "description": "A generation job."
+      },
+      "ResolvedLine": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Id",
+            "description": "Line identifier"
+          },
+          "roleId": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Roleid",
+            "description": "Role identifier"
+          },
+          "voiceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Voiceid",
+            "description": "Resolved voice ID that will be used for this line"
+          },
+          "line": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Line",
+            "description": "The text to speak"
+          },
+          "extra": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra",
+            "description": "Performance hint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "roleId",
+          "voiceId",
+          "line"
+        ],
+        "title": "ResolvedLine",
+        "description": "A story line with resolved voice assignment.\n\nThis is the result of resolving a StoryLine using the resolution order:\nactorId \u2192 casting[roleId] \u2192 defaultVoiceId"
       },
       "Role": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["roleId", "name"],
         "properties": {
-          "roleId": { "type": "integer", "minimum": 0 },
-          "name": { "type": "string" },
-          "notes": { "type": "string", "nullable": true }
-        }
+          "roleId": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Roleid",
+            "description": "Unique role identifier"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name",
+            "description": "Role name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Optional author notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roleId",
+          "name"
+        ],
+        "title": "Role",
+        "description": "A role in a story."
       },
       "StoryLine": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "roleId", "line"],
         "properties": {
-          "id": { "type": "integer", "minimum": 0, "description": "Unique line identifier" },
-          "roleId": { "type": "integer", "minimum": 0, "description": "Role that speaks this line" },
-          "line": { "type": "string", "description": "The text to speak" },
-          "extra": { "type": "string", "nullable": true, "description": "Performance hint (e.g., 'curious, excited')" },
-          "actorId": { "type": "string", "nullable": true, "description": "Optional per-line voice override. Highest priority: actorId → casting[roleId] → defaultVoiceId" }
-        }
+          "id": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Id",
+            "description": "Unique line identifier"
+          },
+          "roleId": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Roleid",
+            "description": "Role that speaks this line"
+          },
+          "line": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Line",
+            "description": "The text to speak"
+          },
+          "extra": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra",
+            "description": "Performance hint (e.g., 'curious, excited')"
+          },
+          "actorId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actorid",
+            "description": "Optional per-line voice override. Highest priority in voice resolution: actorId \u2192 casting[roleId] \u2192 defaultVoiceId"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "roleId",
+          "line"
+        ],
+        "title": "StoryLine",
+        "description": "A single line in a story."
+      },
+      "StorySummary": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Unique story identifier (UUID)"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug",
+            "description": "URL-friendly identifier"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Story title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "title"
+        ],
+        "title": "StorySummary",
+        "description": "Summary of a story for list endpoints."
       },
       "StoryTemplate": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["schemaVersion", "title", "defaultVoiceId", "roles", "lines"],
-        "description": "A story template with roles and lines. Voice assignment resolution order (for each line): 1) line.actorId (if present), 2) casting[str(roleId)] (if present), 3) defaultVoiceId (fallback).",
         "properties": {
-          "schemaVersion": { "type": "integer", "const": 1, "description": "Schema version" },
-          "title": { "type": "string", "description": "Story title" },
-          "defaultVoiceId": { "type": "string", "description": "Fallback voice ID used when a role has no casting assignment and line has no actorId" },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Unique story identifier (UUID). Set by server on creation."
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug",
+            "description": "URL-friendly identifier derived from title. Set by server on creation."
+          },
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schemaversion",
+            "description": "Schema version",
+            "default": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Title",
+            "description": "Story title"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "description": "Language for TTS generation (e.g., 'English', 'Chinese', 'Spanish')",
+            "default": "English"
+          },
+          "defaultVoiceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Defaultvoiceid",
+            "description": "Fallback voice ID used when a role has no casting assignment and line has no actorId"
+          },
           "roles": {
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            },
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Role" },
+            "title": "Roles",
             "description": "Story roles"
           },
           "casting": {
-            "type": "object",
-            "additionalProperties": { "type": "string" },
-            "nullable": true,
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Casting",
             "description": "Optional map of roleId (as string key) to voiceId (string value). Example: {'0': 'narrator_male', '1': 'woman'}. Keys must be string representations of roleId integers.",
             "example": {
               "0": "narrator_male",
@@ -352,50 +1463,248 @@
             }
           },
           "lines": {
+            "items": {
+              "$ref": "#/components/schemas/StoryLine"
+            },
             "type": "array",
-            "items": { "$ref": "#/components/schemas/StoryLine" },
+            "title": "Lines",
             "description": "Story lines"
           }
-        }
-      },
-      "ResolvedLine": {
+        },
         "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "roleId", "voiceId", "line"],
-        "description": "A story line with resolved voice assignment. Result of resolving a StoryLine using: actorId → casting[roleId] → defaultVoiceId",
-        "properties": {
-          "id": { "type": "integer", "description": "Line identifier" },
-          "roleId": { "type": "integer", "description": "Role identifier" },
-          "voiceId": { "type": "string", "description": "Resolved voice ID that will be used for this line" },
-          "line": { "type": "string", "description": "The text to speak" },
-          "extra": { "type": "string", "nullable": true, "description": "Performance hint" }
-        }
+        "required": [
+          "title",
+          "defaultVoiceId",
+          "roles",
+          "lines"
+        ],
+        "title": "StoryTemplate",
+        "description": "A story template with roles and lines.\n\nVoice assignment resolution order (for each line):\n1. line.actorId (if present) - per-line override\n2. casting[str(roleId)] (if present) - role-level assignment\n3. defaultVoiceId - fallback for all unassigned roles\n\nExample casting: {\"0\": \"narrator_male\", \"1\": \"woman\"} maps roleId 0 to narrator_male, roleId 1 to woman."
       },
-      "GenerateRequest": {
-        "type": "object",
-        "additionalProperties": false,
+      "ValidationError": {
         "properties": {
-          "concat": { "type": "boolean", "default": false },
-          "concatOut": { "type": "string", "nullable": true }
-        }
-      },
-      "Job": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "type", "status"],
-        "properties": {
-          "id": { "type": "string" },
-          "type": { "type": "string" },
-          "status": { "type": "string", "enum": ["queued", "running", "succeeded", "failed"] },
-          "storyId": { "type": "string", "nullable": true },
-          "message": { "type": "string", "nullable": true },
-          "outputPath": { "type": "string", "nullable": true },
-          "requestParams": {
-            "type": "object",
-            "additionalProperties": true,
-            "nullable": true
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
           }
-        }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Voice": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "description": "Language for this voice"
+          },
+          "instruction": {
+            "type": "string",
+            "title": "Instruction",
+            "description": "Voice instruction/prompt"
+          },
+          "sample_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Text",
+            "description": "Sample text for this voice"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend",
+            "description": "TTS backend (qwen, vibevoice)",
+            "default": "qwen"
+          },
+          "promptPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promptpath",
+            "description": "Path to prompt file"
+          },
+          "refAudioPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refaudiopath",
+            "description": "Path to reference audio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "language",
+          "instruction"
+        ],
+        "title": "Voice",
+        "description": "A voice definition."
+      },
+      "VoiceCloneConfig": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id",
+            "description": "Voice identifier"
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Language",
+            "description": "Language for this voice"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Instruction",
+            "description": "Voice description/notes"
+          },
+          "ref_audio_url": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Ref Audio Url",
+            "description": "Path to reference audio file (WAV format). Upload via POST /audio/upload first to get the path."
+          },
+          "ref_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Text",
+            "description": "Optional transcript of reference audio"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend",
+            "description": "TTS backend to use (qwen, vibevoice)",
+            "default": "qwen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "language",
+          "instruction",
+          "ref_audio_url"
+        ],
+        "title": "VoiceCloneConfig",
+        "description": "Voice configuration for voice cloning from reference audio (works with all backends).\n\nWorkflow:\n1. Upload reference audio: POST /audio/upload (returns file_path)\n2. Use file_path in ref_audio_url field\n3. Create voice clone: POST /voices/clone"
+      },
+      "VoiceConfig": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id",
+            "description": "Voice identifier"
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Language",
+            "description": "Language for this voice"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Instruction",
+            "description": "Voice instruction/prompt"
+          },
+          "sample_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sample Text",
+            "description": "Sample text for voice generation"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend",
+            "description": "TTS backend to use (qwen only - vibevoice not supported for voice design)",
+            "default": "qwen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "language",
+          "instruction",
+          "sample_text"
+        ],
+        "title": "VoiceConfig",
+        "description": "Voice configuration for creation/update using voice design (Qwen only)."
+      },
+      "VoicePool": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name",
+            "description": "Pool name"
+          },
+          "voiceIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Voiceids",
+            "description": "List of voice IDs in this pool"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "voiceIds"
+        ],
+        "title": "VoicePool",
+        "description": "A pool of voices grouped by theme."
       }
     }
   }

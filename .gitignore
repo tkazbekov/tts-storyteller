@@ -46,6 +46,7 @@ outputs/story/*/
 !outputs/story/.gitkeep
 outputs/voice_design/*.wav
 !outputs/voice_design/.gitkeep
+uploads/
 
 # Environment variables
 .env

@@ -11,10 +11,10 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from lib.models import Job, VoiceConfig
+from lib.models import Job, VoiceCloneConfig, VoiceConfig
 from lib.repositories import get_job_repository
 from services.story_generation import generate_story
-from services.voice_generation import generate_voice_job
+from services.voice_generation import generate_voice_clone_job, generate_voice_job
 
 _job_queue: asyncio.Queue[str] = asyncio.Queue()
 _active_jobs: dict[str, Job] = {}
@@ -98,7 +98,7 @@ async def enqueue_story_job(story_id: str, request_params: dict[str, Any] | None
 
 
 async def enqueue_voice_job(voice_id: str, voice_config: VoiceConfig, message: str) -> Job:
-    """Create and enqueue a voice generation job. Active state in memory only."""
+    """Create and enqueue a voice generation job (voice design). Active state in memory only."""
     if await get_active_voice_job(voice_id):
         raise ValueError("active_job")
 
@@ -111,6 +111,31 @@ async def enqueue_voice_job(voice_id: str, voice_config: VoiceConfig, message: s
         message=message,
         outputPath=None,
         requestParams={"voice_config": voice_config.model_dump()},
+        createdAt=_now_iso(),
+        startedAt=None,
+        finishedAt=None,
+    )
+    _active_jobs[job.id] = job
+    _job_queue.put_nowait(job.id)
+    return job
+
+
+async def enqueue_voice_clone_job(
+    voice_id: str, voice_config: VoiceCloneConfig, message: str
+) -> Job:
+    """Create and enqueue a voice cloning job. Active state in memory only."""
+    if await get_active_voice_job(voice_id):
+        raise ValueError("active_job")
+
+    job = Job(
+        id=_new_job_id(),
+        type="voice_clone",
+        status="queued",
+        storyId=None,
+        voiceId=voice_id,
+        message=message,
+        outputPath=None,
+        requestParams={"voice_clone_config": voice_config.model_dump()},
         createdAt=_now_iso(),
         startedAt=None,
         finishedAt=None,
@@ -194,6 +219,28 @@ async def process_job_queue() -> None:
 
                 current_job.status = "succeeded"
                 current_job.message = "Voice generation completed"
+                current_job.outputPath = str(prompt_path)
+                current_job.finishedAt = _now_iso()
+                await job_repo.save(current_job)
+                if current_job.id in _active_jobs:
+                    del _active_jobs[current_job.id]
+
+            elif current_job.type == "voice_clone":
+                if not current_job.voiceId:
+                    raise ValueError("Job missing voiceId")
+
+                request_params = current_job.requestParams or {}
+                voice_clone_config_dict = request_params.get("voice_clone_config")
+                if not voice_clone_config_dict:
+                    raise ValueError("Job missing voice_clone_config in requestParams")
+
+                voice_clone_config = VoiceCloneConfig(**voice_clone_config_dict)
+                prompt_path = await generate_voice_clone_job(
+                    current_job.voiceId, voice_clone_config
+                )
+
+                current_job.status = "succeeded"
+                current_job.message = "Voice cloning completed"
                 current_job.outputPath = str(prompt_path)
                 current_job.finishedAt = _now_iso()
                 await job_repo.save(current_job)

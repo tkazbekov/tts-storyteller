@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from lib.models import Voice, VoiceConfig
+from lib.models import Voice, VoiceCloneConfig, VoiceConfig
 from lib.repositories import get_pool_repository, get_voice_repository
 from lib.voice_metadata import should_regenerate_voice
-from services.jobs import enqueue_voice_job, get_active_voice_job
+from services.jobs import enqueue_voice_clone_job, enqueue_voice_job, get_active_voice_job
 
 router = APIRouter()
 
@@ -55,9 +55,50 @@ async def get_voice_endpoint(voiceId: str) -> Voice:
 @router.post("/voices", status_code=202)
 async def create_voice_endpoint(voice_config: VoiceConfig):
     """
-    Create a new voice.
+    Create a new voice using voice design (Qwen only).
+
+    Generates voice from text description. Not supported for VibeVoice backend.
+    For VibeVoice, use POST /voices/clone instead.
 
     Generates WAV and prompt files, updates voices.json.
+    Returns a job ID to track generation progress.
+    """
+    if voice_config.backend != "qwen":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Voice design is only supported for 'qwen' backend. "
+            f"For '{voice_config.backend}' backend, use POST /voices/clone with reference audio.",
+        )
+
+    voice_repo = get_voice_repository()
+    existing = await voice_repo.get(voice_config.id)
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Voice '{voice_config.id}' already exists")
+
+    if await get_active_voice_job(voice_config.id):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Voice '{voice_config.id}' is already being generated",
+        )
+
+    try:
+        job = await enqueue_voice_job(voice_config.id, voice_config, "Queued for generation")
+    except ValueError:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Voice '{voice_config.id}' is already being generated",
+        ) from None
+
+    return job
+
+
+@router.post("/voices/clone", status_code=202)
+async def clone_voice_endpoint(voice_config: VoiceCloneConfig):
+    """
+    Create a new voice using voice cloning from reference audio.
+
+    Works with all backends (qwen, vibevoice). Requires reference audio file.
+    Generates prompt from reference audio, updates voices.json.
     Returns a job ID to track generation progress.
     """
     voice_repo = get_voice_repository()
@@ -72,7 +113,9 @@ async def create_voice_endpoint(voice_config: VoiceConfig):
         )
 
     try:
-        job = await enqueue_voice_job(voice_config.id, voice_config, "Queued for generation")
+        job = await enqueue_voice_clone_job(
+            voice_config.id, voice_config, "Queued for voice cloning"
+        )
     except ValueError:
         raise HTTPException(
             status_code=409,
