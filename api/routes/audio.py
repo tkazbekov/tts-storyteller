@@ -2,66 +2,84 @@
 
 from __future__ import annotations
 
-import shutil
+import re
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from lib.paths import get_story_full_audio_path, get_story_output_dir, get_voice_ref_audio_path
+from lib.paths import (
+    get_project_root,
+    get_story_full_audio_path,
+    get_story_output_dir,
+    get_voice_ref_audio_path,
+)
 
 router = APIRouter()
 
-# Upload directory for reference audio files
-UPLOAD_DIR = Path("uploads/reference_audio")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR = get_project_root() / "uploads" / "reference_audio"
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+SAFE_FILENAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+
+
+def _safe_upload_name(filename: str) -> str:
+    stem = Path(filename).stem.strip() or "reference"
+    suffix = Path(filename).suffix.lower()
+    safe_stem = SAFE_FILENAME_RE.sub("_", stem).strip("._-") or "reference"
+    return f"{safe_stem}-{uuid.uuid4().hex[:12]}{suffix}"
 
 
 @router.post("/audio/upload")
 async def upload_reference_audio(file: UploadFile = File(...)) -> dict[str, str]:  # noqa: B008
-    """
-    Upload a reference audio file for voice cloning.
+    """Upload a WAV reference clip for voice cloning.
 
-    Accepts WAV files. Returns the file path to use in ref_audio_url.
-
-    Returns:
-        {"file_path": "uploads/reference_audio/filename.wav"}
+    The file is stored under `uploads/reference_audio/` with a sanitized unique
+    name. Use the returned `file_path` as `ref_audio_url` when cloning a voice.
     """
-    # Validate file type
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
-    if not file.filename.lower().endswith(".wav"):
-        raise HTTPException(
-            status_code=400,
-            detail="Only WAV files are supported. Please upload a .wav file.",
-        )
+    if Path(file.filename).suffix.lower() != ".wav":
+        raise HTTPException(status_code=400, detail="Only WAV files are supported")
 
-    # Save file
-    file_path = UPLOAD_DIR / file.filename
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    stored_name = _safe_upload_name(file.filename)
+    file_path = UPLOAD_DIR / stored_name
+
+    bytes_written = 0
     try:
         with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            while chunk := await file.read(1024 * 1024):
+                bytes_written += len(chunk)
+                if bytes_written > MAX_UPLOAD_BYTES:
+                    buffer.close()
+                    file_path.unlink(missing_ok=True)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Reference audio is too large; max is {MAX_UPLOAD_BYTES // 1024 // 1024} MB",
+                    )
+                buffer.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to save file: {str(e)}",
-        ) from e
+        file_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}") from e
+    finally:
+        await file.close()
 
+    relative_path = file_path.relative_to(get_project_root())
     return {
-        "file_path": str(file_path),
-        "filename": file.filename,
-        "message": f"File uploaded successfully. Use this path in ref_audio_url: {file_path}",
+        "file_path": str(relative_path),
+        "filename": stored_name,
+        "original_filename": Path(file.filename).name,
+        "message": f"File uploaded successfully. Use file_path as ref_audio_url: {relative_path}",
     }
 
 
 @router.get("/audio/voices/{voiceId}.wav")
 def get_voice_audio(voiceId: str) -> FileResponse:
-    """
-    Download the reference/sample audio for a voice.
-
-    Returns 404 if the voice has not been generated yet (no WAV file).
-    """
+    """Download the reference/sample audio for a voice."""
     audio_path = get_voice_ref_audio_path(voiceId)
 
     if not audio_path.exists():
@@ -79,13 +97,7 @@ def get_voice_audio(voiceId: str) -> FileResponse:
 
 @router.get("/audio/stories/{storyId}/full.wav")
 def get_story_audio(storyId: str) -> FileResponse:
-    """
-    Download the concatenated audio file for a story.
-
-    Note: This endpoint only works if the story was generated with `concat: true`.
-    If `concat: false`, individual audio files are in the output directory but
-    no concatenated file exists. Use `/audio/stories/{storyId}/files` to list individual files.
-    """
+    """Download the concatenated audio file for a story."""
     audio_path = get_story_full_audio_path(storyId)
 
     if not audio_path.exists():
@@ -106,12 +118,7 @@ def get_story_audio(storyId: str) -> FileResponse:
 
 @router.get("/audio/stories/{storyId}/files")
 def list_story_audio_files(storyId: str) -> list[str]:
-    """
-    List all individual audio files for a story.
-
-    Returns a list of filenames in the story's output directory.
-    These are the individual line audio files (e.g., "001_narrator_male.wav").
-    """
+    """List all individual audio files for a story."""
     output_dir = get_story_output_dir(storyId)
 
     if not output_dir.exists():
@@ -134,11 +141,7 @@ def list_story_audio_files(storyId: str) -> list[str]:
 
 @router.get("/audio/stories/{storyId}/files/{filename}")
 def get_story_audio_file(storyId: str, filename: str) -> FileResponse:
-    """
-    Download a specific individual audio file for a story.
-
-    Use GET /audio/stories/{storyId}/files to list available filenames.
-    """
+    """Download a specific individual audio file for a story."""
     output_dir = get_story_output_dir(storyId)
     audio_path = output_dir / filename
 

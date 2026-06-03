@@ -399,8 +399,3 @@ TTS_VIBEVOICE_DIFFUSION_STEPS=50
 - Ensure voice was created with correct backend
 - Check `prompts/{backend}/{voice_id}.{ext}` exists
 - Verify backend subdirectories exist
-
----
-
-**Version:** 1.0  
-**Last Updated:** 2026-02-04

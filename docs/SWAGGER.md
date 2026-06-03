@@ -11,7 +11,7 @@ The TTS Storyteller API includes interactive Swagger UI documentation for easy A
 Start the API server:
 
 ```bash
-cd ~/tts-storyteller
+cd tts-storyteller
 source env.sh
 make run-api
 ```
@@ -315,7 +315,3 @@ Check request body matches schema exactly:
 - All required fields present
 - Correct data types
 - Valid enum values (e.g., backend must be "qwen" or "vibevoice")
-
----
-
-**Last Updated:** 2026-02-04

@@ -67,11 +67,11 @@ scripts/              # CLI tools
 voiceId = line.actorId ?? casting[roleId] ?? defaultVoiceId
 ```
 
-**Job System:** Async in-memory queue with states: `queued` -> `running` -> `succeeded`/`failed`
+**Job System:** Postgres-backed async queue with states: `queued` -> `running` -> `succeeded`/`failed`
 
 **Storage:**
 - Stories: `stories/<story_id>.json`
-- Prompts: `prompts/<voice_id>.pt` (PyTorch serialized)
+- Prompts: `prompts/<backend>/<voice_id>.<ext>` (`.pt` for Qwen, `.json` for VibeVoice)
 - Audio: `outputs/story/<story_id>/` (per-line WAVs + concatenated)
 
 **Model Loading:** TTS model loaded once per process and cached (see `lib/runtime.py`)

@@ -331,7 +331,7 @@ ls -lh uploads/reference_audio/test.wav
    - Added upload endpoint to endpoint list
    - Updated voice cloning examples with 2-step workflow
 
-6. **VOICE_CLONING_API.md**
+6. **docs/features/voice-cloning-api.md**
    - Updated usage examples with upload step
 
 ---

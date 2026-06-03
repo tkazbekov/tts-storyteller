@@ -226,7 +226,7 @@ The VibeVoice backend integrates seamlessly with the existing multi-backend infr
 
 ## Next Steps
 
-The VibeVoice backend is now production-ready. To use it:
+The VibeVoice backend is implemented but experimental in this repository. Validate it end-to-end on your target GPU before relying on it. To use it:
 
 1. **Install dependencies:**
    ```bash
@@ -257,7 +257,7 @@ The VibeVoice backend is now production-ready. To use it:
 - `lib/backends/vibevoice.py` (283 lines)
 - `tests/test_vibevoice_backend.py` (175 lines)
 - `scripts/test_vibevoice.py` (157 lines)
-- `VIBEVOICE_IMPLEMENTATION.md` (this file)
+- `docs/features/vibevoice-implementation.md` (this file)
 
 ### Modified:
 - `requirements-vibevoice.txt` (added dependencies)

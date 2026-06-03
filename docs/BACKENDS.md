@@ -117,7 +117,7 @@ Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish
 
 ### Status
 
-✅ **Implemented** - Using community fork ([vibevoice-community/VibeVoice](https://github.com/vibevoice-community/VibeVoice))
+Experimental in this repository. The adapter is implemented against the community fork, but treat it as needing local end-to-end validation on your target GPU.
 
 ### Model Information
 
@@ -337,8 +337,7 @@ pip install flash-attn --no-build-isolation  # Optional, recommended
 ### VibeVoice
 
 ```bash
-# To be determined (official package pending)
-# Current: Custom implementation in lib/backends/vibevoice.py
+pip install -r requirements-vibevoice.txt
 ```
 
 ---
@@ -355,7 +354,3 @@ pip install flash-attn --no-build-isolation  # Optional, recommended
 - **Quantized:** https://huggingface.co/DevParker/VibeVoice7b-low-vram
 - **Paper:** https://arxiv.org/abs/2508.19205
 - **GitHub:** https://github.com/microsoft/VibeVoice
-
----
-
-**Last Updated:** 2026-02-04

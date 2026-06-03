@@ -40,22 +40,33 @@ env/
 htmlcov/
 .tox/
 
-# Project specific
-outputs/story/*.wav
-outputs/story/*/
-!outputs/story/.gitkeep
-outputs/voice_design/*.wav
-!outputs/voice_design/.gitkeep
-uploads/
-
 # Environment variables
 .env
 .env.local
 
+# Model and package caches if a user points them at the repo
+.hf-cache/
+huggingface-cache/
+models/
+
+# Runtime uploads and generated audio/prompts
+uploads/
+outputs/api.log
+outputs/story/*
+!outputs/story/.gitkeep
+outputs/voice_design/**/*
+!outputs/voice_design/.gitkeep
+!outputs/voice_design/qwen/
+!outputs/voice_design/qwen/.gitkeep
+!outputs/voice_design/vibevoice/
+!outputs/voice_design/vibevoice/.gitkeep
+prompts/**/*
+!prompts/qwen/
+!prompts/qwen/.gitkeep
+!prompts/vibevoice/
+!prompts/vibevoice/.gitkeep
+voices/.voice_metadata.json
+
 # OS
 .DS_Store
 Thumbs.db
-
-# runtime
-outputs/api.log
-

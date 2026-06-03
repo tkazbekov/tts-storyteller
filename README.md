@@ -1,595 +1,238 @@
 # TTS Storyteller
 
-TTS Storyteller is a local, multi-backend text-to-speech API and CLI for generating multi-voice stories. It currently supports Qwen3-TTS and VibeVoice backends with:
-- UV for Python venv and package management (faster than pip)
-- CUDA + FlashAttention
-- Scripts to design voices and reuse them for storytelling
-- FastAPI backend for story management and generation
+Local multi-backend text-to-speech tools for generating multi-voice stories.
 
+TTS Storyteller is an independent API/CLI wrapper around third-party TTS models. It is not an official Qwen or VibeVoice project. The app currently supports:
 
-This repo is meant as a small, explicit pipeline you can rerun, extend, and publish independently of any single model backend. The core flow is:
-1) design voices (VoiceDesign model)
-2) turn those voices into prompt files (Base model)
-3) generate a multi-voice story (Base model) via API or CLI
+- Qwen3-TTS for fast story narration, text-described voice design, and voice-clone prompts.
+- VibeVoice for experimental reference-audio voice cloning and long-form dialogue.
+- FastAPI endpoints for voices, stories, jobs, and audio downloads/uploads.
+- CLI scripts for prompt creation, story validation, migration, and generation.
 
-## What is installed
-
-- Python 3.12 venv at `~/tts-storyteller/.venv`
-- PyTorch pinned to a FlashAttention-compatible combo:
-  - torch 2.8.0+cu128
-  - torchaudio 2.8.0+cu128
-  - torchvision 0.23.0+cu128
-- FlashAttention 2.8.3 (prebuilt wheel)
-- qwen-tts
-- SoX built locally at `~/.local/bin/sox`
+Status: usable local project, still early. Qwen is the main tested path. VibeVoice support is implemented but should be treated as experimental until you run an end-to-end generation on your GPU.
 
 ## Quick start
 
-### Development setup
+One command from a fresh clone:
 
 ```bash
-cd ~/tts-storyteller
-source env.sh
-
-# Install dependencies
-make install
-
-# Install dev tools (linting, formatting, testing)
-make dev-install
+./scripts/start.sh
 ```
 
-### Run the API server
+That script creates `.venv`, installs dependencies, creates `.env` if missing, starts Postgres with Docker Compose when Docker is available, runs migrations, pre-downloads the configured Hugging Face models, and starts the API.
+
+Then open:
+
+```text
+http://localhost:8000/docs
+```
+
+If you only want Qwen or VibeVoice dependencies/models:
+
+```bash
+./scripts/start.sh --backend qwen
+./scripts/start.sh --backend vibevoice
+./scripts/start.sh --backend all
+```
+
+Skip the heavy model download when you only want the API shell:
+
+```bash
+./scripts/start.sh --skip-model-download
+```
+
+## Manual setup
+
+Requirements:
+
+- Linux
+- Python 3.12
+- CUDA-capable GPU recommended
+- `uv` recommended, `pip` fallback supported by `scripts/start.sh`
+- Docker Compose for local Postgres, or your own `DATABASE_URL`
+
+```bash
+git clone <your-repo-url> tts-storyteller
+cd tts-storyteller
+cp .env.example .env
+uv venv -p 3.12 .venv
+source env.sh
+make install
+make install-qwen       # optional, Qwen backend
+make install-vibevoice  # optional, VibeVoice backend
+make db-up
+make db-setup
+make download-models BACKEND=qwen
+make run-api
+```
+
+## Configuration
+
+Most settings live in `.env`:
+
+```bash
+TTS_DEFAULT_BACKEND=qwen
+TTS_DEVICE=cuda:0
+DATABASE_URL=postgresql+asyncpg://tts_storyteller:dev_password@localhost:5432/tts_storyteller
+
+TTS_QWEN_BASE_MODEL=Qwen/Qwen3-TTS-12Hz-1.7B-Base
+TTS_QWEN_VOICE_DESIGN_MODEL=Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign
+TTS_QWEN_DTYPE=bfloat16
+TTS_QWEN_ATTN=flash_attention_2
+
+TTS_VIBEVOICE_BASE_MODEL=DevParker/VibeVoice7b-low-vram
+TTS_VIBEVOICE_DTYPE=float16
+TTS_VIBEVOICE_QUANTIZATION=4bit
+```
+
+See `.env.example` for the full list.
+
+## Backends
+
+| Backend | Best for | Voice design | Voice cloning | Notes |
+|---|---|---:|---:|---|
+| Qwen3-TTS | Fast single-voice narration and reusable prompts | yes | yes | Main path. Uses `.pt` prompt files. |
+| VibeVoice | Natural dialogue and long-form audio | no | yes | Experimental in this repo. Requires reference WAV files. |
+
+Model weights are downloaded by Hugging Face tooling into your normal HF cache, not committed into this repository.
+
+## Repository layout
+
+```text
+api/                  FastAPI app and routes
+lib/                  Core models, storage, backends, config, generation helpers
+services/             Async job orchestration and API service layer
+scripts/              Setup, model download, migration, and generation CLIs
+stories/              Example story templates
+voices/               Example voice and pool definitions
+prompts/              Small reusable prompt examples and generated prompt placeholders
+outputs/              Runtime audio output placeholders only
+docs/                 Architecture, backend, API, and feature notes
+tests/                Unit tests
+```
+
+Generated data is intentionally ignored:
+
+- `.venv/`
+- `.env`
+- `uploads/`
+- generated WAVs under `outputs/`
+- caches such as `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`
+
+## API workflow
+
+Start the API:
 
 ```bash
 make run-api
-# or
-source env.sh && python api/main.py
 ```
 
-Then open:
-```
-http://localhost:8000/docs  # Interactive API docs
-http://localhost:8000        # API root
-```
-
-## Development workflow
-
-### Code quality tools
+Create a story:
 
 ```bash
-make format      # Format code (like Prettier)
-make lint        # Lint code (like ESLint)
-make type-check  # Type check (like TypeScript)
-make test        # Run tests
-make check       # Run all checks
-make clean       # Clean cache files
+curl -X POST http://localhost:8000/stories   -H "Content-Type: application/json"   -d @stories/template.json
 ```
 
-See `make help` for all available commands.
-
-### Project structure
-
-```
-tts-storyteller/
-  api/              # FastAPI application
-    app.py          # FastAPI app setup
-    main.py         # API entrypoint
-    routes/         # API route modules
-  services/         # API service layer
-  lib/              # Reusable library modules
-    paths.py        # Path utilities
-    models.py       # Pydantic models
-    validation.py   # Story validation
-    resolution.py   # Role-to-voice resolution
-    generation.py   # TTS generation logic
-    storage.py      # File storage utilities
-  scripts/          # CLI tools
-    voice_design.py
-    create_prompts.py
-    storyteller.py  # JSON story generation
-    validate_story.py
-    common.py
-  stories/          # Story templates (JSON only)
-  voices/           # Voice definitions
-  prompts/          # Voice prompt files (.pt)
-  outputs/          # Generated audio
-  tests/            # Test files
-```
-
-## Voice design + reuse workflow
-
-You will do this in three steps:
-
-1) **Design voices** (VoiceDesign model) -> WAV files
-2) **Create prompts** (Base model) -> prompt `.pt` files
-3) **Generate story** (Base model) using those prompts
-
-### 1) Design voices
-
-Edit `voices/voices.json` to describe the characters.
-
-Then run:
+Generate audio:
 
 ```bash
-cd ~/tts-storyteller
-source ./env.sh
-python scripts/voice_design.py --config voices/voices.json
+curl -X POST http://localhost:8000/stories/template/generate   -H "Content-Type: application/json"   -d '{"concat": true}'
 ```
 
-Outputs:
-- WAV files: `outputs/voice_design/<voice_id>.wav`
-- Metadata: `outputs/voice_design/voice_design_meta.json`
-
-### 2) Create reusable prompts
-
-Use the voice WAVs + text to build prompt files for stable reuse:
+Poll the returned job:
 
 ```bash
-cd ~/tts-storyteller
-source ./env.sh
-python scripts/create_prompts.py --config voices/voices.json
-```
-
-Outputs:
-- Prompt files: `prompts/<voice_id>.pt`
-- Metadata: `prompts/prompts_meta.json`
-
-By default, `create_prompts.py` looks for reference audio at:
-`outputs/voice_design/<voice_id>.wav` unless you set `ref_audio` in `voices/voices.json`.
-
-### 3) Generate a story
-
-**Via API (recommended):**
-
-Stories use JSON templates (see "Story templates" below). Use the API endpoints:
-
-```bash
-# Create a story
-curl -X POST http://localhost:8000/stories \
-  -H "Content-Type: application/json" \
-  -d @stories/template.json
-
-# Generate audio
-curl -X POST http://localhost:8000/stories/template/generate
-
-# Check job status
 curl http://localhost:8000/jobs/<jobId>
+```
 
-# Download audio
+Download the final WAV:
+
+```bash
 curl http://localhost:8000/audio/stories/template/full.wav -o story.wav
 ```
 
-**Via CLI:**
+Upload reference audio for voice cloning:
 
 ```bash
-cd ~/tts-storyteller
-source ./env.sh
+curl -X POST http://localhost:8000/audio/upload   -F "file=@reference.wav"
+```
+
+Create a cloned voice from the returned `file_path`:
+
+```bash
+curl -X POST http://localhost:8000/voices/clone   -H "Content-Type: application/json"   -d '{
+    "id": "my_voice",
+    "backend": "qwen",
+    "language": "English",
+    "instruction": "Reference speaker",
+    "ref_audio_url": "uploads/reference_audio/<uploaded-file>.wav",
+    "ref_text": "Transcript of the reference clip"
+  }'
+```
+
+## CLI workflow
+
+Validate a story:
+
+```bash
+python scripts/validate_story.py stories/template.json
+```
+
+Design Qwen voices from `voices/voices.json`:
+
+```bash
+python scripts/voice_design.py --config voices/voices.json
+```
+
+Create reusable Qwen prompts:
+
+```bash
+python scripts/create_prompts.py --config voices/voices.json
+```
+
+Generate a story from the CLI:
+
+```bash
 python scripts/storyteller.py --story template
 ```
 
-Outputs:
-- Per-line WAVs in `outputs/story/<story_id>/`
-- Concatenated WAV: `outputs/story/<story_id>/story_full.wav`
-
-## Story templates (JSON only)
-
-Stories are authored by **roles**, not voices. Voices are assigned later via casting, and
-any missing casting falls back to `defaultVoiceId`. We only support English right now.
-
-Template file: `stories/template.json` (example), schema: `docs/story-template.schema.json`.
-
-Minimal example:
-
-```json
-{
-  "schemaVersion": 1,
-  "title": "Sunny Morning",
-  "defaultVoiceId": "narrator_male",
-  "roles": [
-    { "roleId": 0, "name": "Narrator" },
-    { "roleId": 1, "name": "Child" }
-  ],
-  "casting": {
-    "0": "narrator_male",
-    "1": "child"
-  },
-  "lines": [
-    { "id": 0, "roleId": 0, "line": "It was a sunny morning in a small town." },
-    { "id": 1, "roleId": 1, "line": "Can I bring my little blue bucket?", "extra": "curious, excited" }
-  ]
-}
-```
-
-Resolution rules:
-- `voiceId = line.actorId ?? casting[roleId] ?? defaultVoiceId`
-- `extra` is a performance hint and can be appended to your prompt later
-
-Validate a template:
+Download configured models without starting the API:
 
 ```bash
-python scripts/validate_story.py stories/template.json
+python scripts/download_models.py --backend qwen
+python scripts/download_models.py --backend all
 ```
 
-## API Reference
-
-The FastAPI server provides a full REST API for story management and generation.
-
-### Endpoints
-
-**Health:**
-- `GET /health` - Simple health check
-
-**Voices:**
-- `GET /voices` - List all available voices
-- `GET /voices/{voiceId}` - Get voice details
-- `GET /voices/pools` - List voice pools
-- `GET /voices/pools/{poolName}` - Get voices in a pool
-
-**Stories:**
-- `GET /stories` - List all story IDs
-- `POST /stories` - Create a new story template
-- `GET /stories/{storyId}` - Get story template
-- `PUT /stories/{storyId}` - Update story template
-- `POST /stories/{storyId}/render` - Resolve roles to voices
-- `POST /stories/{storyId}/generate` - Start audio generation (async job)
-
-**Jobs:**
-- `GET /jobs/{jobId}` - Get job status
-
-**Audio:**
-- `GET /audio/stories/{storyId}/full.wav` - Download concatenated audio
-- `GET /audio/stories/{storyId}/files` - List per-line audio files
-- `GET /audio/stories/{storyId}/files/{filename}` - Download a specific line audio file
-
-### Interactive API docs
-
-Visit `http://localhost:8000/docs` for interactive API documentation with request/response schemas.
-
-### Example: Full workflow via API
+## Development
 
 ```bash
-# 1. Create a story
-curl -X POST http://localhost:8000/stories \
-  -H "Content-Type: application/json" \
-  -d '{
-    "schemaVersion": 1,
-    "title": "My Story",
-    "defaultVoiceId": "narrator_male",
-    "roles": [{"roleId": 0, "name": "Narrator"}],
-    "lines": [{"id": 0, "roleId": 0, "line": "Hello world"}]
-  }'
-
-# 2. Preview voice assignments
-curl http://localhost:8000/stories/my_story/render
-
-# 3. Generate audio
-curl -X POST http://localhost:8000/stories/my_story/generate \
-  -H "Content-Type: application/json" \
-  -d '{"concat": true}'
-# Note: concat defaults to true if omitted.
-# Returns: {"id": "...", "status": "queued", ...}
-
-# 4. Poll job status
-curl http://localhost:8000/jobs/<jobId>
-# Returns: {"id": "...", "status": "succeeded", "outputPath": "..."}
-
-# 5. Download audio
-curl http://localhost:8000/audio/stories/my_story/full.wav -o story.wav
+make help
+make format
+make lint
+make type-check
+make test
+make check
 ```
 
-## File formats
-
-### `voices/voices.json`
-
-This is the input for both `voice_design.py` and `create_prompts.py`. It must be a JSON array
-of objects. Minimal example:
-
-```json
-[
-  {
-    "id": "narrator",
-    "language": "English",
-    "instruction": "Warm narrator, steady cadence, clear diction.",
-    "sample_text": "Our story begins in a small town by the sea."
-  }
-]
-```
-
-Fields:
-- `id` (required): filename stem for outputs (WAVs + prompts)
-- `language` (optional, default `Auto`): language name passed to the model
-- `instruction` (required for voice design): description for the VoiceDesign model
-- `sample_text` (required for voice design): text used to synthesize the initial voice
-- `ref_audio` (optional for prompt creation): custom audio path instead of `outputs/voice_design/<id>.wav`
-- `ref_text` (optional for prompt creation): reference transcript for prompt extraction
-
-Notes:
-- `create_prompts.py` requires `ref_text` unless you pass `--xvec-only`.
-- `ref_text` defaults to `sample_text` if not provided.
-
-## Script reference
-
-### `scripts/voice_design.py`
-
-Generates one WAV per voice definition from the VoiceDesign model.
+Before publishing or pushing a release branch, run:
 
 ```bash
-python scripts/voice_design.py \
-  --config voices/voices.json \
-  --out-dir outputs/voice_design \
-  --model Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign \
-  --device cuda:0 \
-  --dtype bfloat16 \
-  --attn auto \
-  --max-new-tokens 4096
+make check
+git diff --check
+review tracked files for local paths, LAN hostnames/IPs, and secret values
 ```
 
-Key args:
-- `--device`: `cuda:0` or `cpu`
-- `--dtype`: `bf16|fp16|fp32`
-- `--attn`: `auto|none|flash_attention_2`
-- `--max-new-tokens`: optional cap for long generations
+## Documentation
 
-### `scripts/create_prompts.py`
-
-Creates reusable `.pt` prompt files for voice cloning.
-
-```bash
-python scripts/create_prompts.py \
-  --config voices/voices.json \
-  --out-dir prompts \
-  --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
-  --device cuda:0 \
-  --dtype bfloat16 \
-  --attn auto
-```
-
-Extra option:
-- `--xvec-only`: use x-vector only mode (skips the need for `ref_text`)
-
-### `scripts/storyteller.py`
-
-Generates audio from a JSON story template.
-
-```bash
-python scripts/storyteller.py \
-  --story template \
-  --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
-  --device cuda:0 \
-  --dtype bfloat16 \
-  --attn auto \
-  --language English \
-  --no-concat  # Don't concatenate (optional)
-```
-
-Note: Story ID is the filename without `.json` extension (e.g., `stories/template.json` → `--story template`).
-
-### `scripts/validate_story.py`
-
-Validates a story template JSON file.
-
-```bash
-python scripts/validate_story.py stories/template.json
-```
-
-### `scripts/convert_txt.py`
-
-Converts old `.txt` format stories to JSON template format.
-
-The old format is `voice_id|language|text` per line (comments starting with `#` are ignored).
-
-```bash
-# Activate venv first (required)
-source env.sh
-
-# Convert a file (outputs to stories/<filename>.json)
-python scripts/convert_txt.py stories/story.txt
-
-# Specify custom output path
-python scripts/convert_txt.py stories/story.txt -o stories/my_story.json
-
-# Dry run to validate without writing
-python scripts/convert_txt.py stories/story.txt --dry-run
-```
-
-The converter:
-- Creates roles from unique voice IDs found in the file
-- Maps each voice ID to a role via the `casting` field
-- Generates a title from the filename
-- Uses `narrator_male` as default voice if present, otherwise the first voice
-- Validates the output against the JSON schema
-
-## Outputs
-
-```
-outputs/
-  voice_design/
-    <voice_id>.wav
-    voice_design_meta.json
-  story/
-    <story_id>/
-      001_<voice_id>.wav
-      002_<voice_id>.wav
-      story_full.wav
-prompts/
-  <voice_id>.pt
-  prompts_meta.json
-```
-
-## Architecture
-
-### Library modules (`lib/`)
-
-The codebase is organized into reusable library modules:
-
-- **`lib/paths.py`**: Centralized path management with absolute paths
-- **`lib/models.py`**: Pydantic models for API data structures
-- **`lib/validation.py`**: Story template validation logic
-- **`lib/resolution.py`**: Role-to-voice resolution (actorId → casting → defaultVoiceId)
-- **`lib/generation.py`**: TTS generation logic with model caching support
-- **`lib/storage.py`**: File-based storage utilities
-
-### API features
-
-- **Postgres-backed storage**: Stories, voices, pools, jobs, and metadata live in Postgres; set `DATABASE_URL` before running. Use `scripts/migrate_to_db.py` (requires `DATABASE_URL`) to import the legacy JSON/metadata into the database before starting the API. The FastAPI app and CLI scripts auto-load `.env` via `python-dotenv`, so keeping your credentials/config in the repository root is enough—no manual `source .env` steps once you run the CLI or `uvicorn api.app:app`.
-- **Model caching**: TTS model loaded once and reused across generations
-- **Async job system**: Non-blocking generation with status tracking
-- **Validation**: Story templates validated on create/update
-- **CORS enabled**: Ready for mobile web app access
-
-The Makefile now exposes helpers for the most common database tasks:
-
-```
-make apply-migrations   # run Alembic migrations (requires .env)
-make migrate-legacy    # import file-based stories/voices/metadata
-make db-setup          # run migrations then import legacy data
-```
-
-Each target sources `env.sh`, so you can run them without worrying about loading `.env` separately.
-
-### Job system
-
-Generation runs asynchronously:
-1. `POST /stories/{storyId}/generate` creates a job and returns immediately
-2. Job status: `queued` → `running` → `succeeded`/`failed`
-3. Poll `GET /jobs/{jobId}` for status updates
-4. On success, download audio via `GET /audio/stories/{storyId}/full.wav`
-
-Job responses include timestamps: `createdAt`, `startedAt`, and `finishedAt` (ISO 8601).
-
-### Async-first routes
-
-The repositories now expose async methods, and the FastAPI routes and services await those methods directly. The previous `_run_sync` shim (which called `asyncio.run()` from existing routes) has been removed, so the app no longer aborts with “task attached to a different loop.” Any CLI or script that still wants the synchronous behavior can call these async helpers via `asyncio.run()`, but the API itself now stays within the single event loop.
-
-## Development tools
-
-### Code quality
-
-- **ruff**: Fast linter and formatter (replaces Black, isort, flake8)
-- **mypy**: Static type checker
-- **pytest**: Testing framework
-- **pre-commit**: Git hooks for auto-formatting
-
-### Configuration files
-
-- `pyproject.toml`: Project metadata and tool configurations
-- `.pre-commit-config.yaml`: Git hooks configuration
-- `.vscode/`: VS Code settings and recommended extensions
-- `Makefile`: Common development tasks
-
-## Notes on dependencies
-
-- CUDA toolkit 12.8 is installed at `/usr/local/cuda-12.8`.
-- `env.sh` prefers CUDA 12.8 (matches torch+cu128).
-- FlashAttention is installed from a prebuilt wheel that matches:
-  - Linux x86_64
-  - Python 3.12
-  - Torch 2.8
-  - CUDA 12.8
-
-If you change Python/Torch/CUDA versions, FlashAttention may need a different wheel.
-
-## Troubleshooting
-
-- **Out of memory**: lower `--max-new-tokens` or switch to `--dtype fp16`.
-- **No GPU**: set `--device cpu` (slow).
-- **Missing SoX**: concatenation requires `sox` in PATH (we installed it in `~/.local/bin`).
-- **Prompt not found**: ensure `prompts/<voice_id>.pt` exists and `voice_id` matches the story.
-- **API not responding**: check that model caching loaded successfully (first request may be slow).
-
-## Initial setup (repro steps)
-
-1) Install UV and create venv:
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   source ~/.local/bin/env
-   uv python install 3.12
-   uv venv -p 3.12 ~/tts-storyteller/.venv
-   ```
-
-2) Install qwen-tts + CUDA PyTorch:
-   ```bash
-   source ~/tts-storyteller/.venv/bin/activate
-   uv pip install -U qwen-tts
-   uv pip install --upgrade \
-     torch==2.8.0+cu128 \
-     torchvision==0.23.0+cu128 \
-     torchaudio==2.8.0+cu128 \
-     --index-url https://download.pytorch.org/whl/cu128
-   ```
-
-3) Install FlashAttention wheel:
-   ```bash
-   uv pip install \
-     https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.2/flash_attn-2.8.3+cu128torch2.8-cp312-cp312-linux_x86_64.whl
-   ```
-
-4) Build SoX locally (no sudo):
-   ```bash
-   cd /tmp
-   curl -L -o sox-14.4.2.tar.gz https://downloads.sourceforge.net/project/sox/sox/14.4.2/sox-14.4.2.tar.gz
-   tar -xzf sox-14.4.2.tar.gz
-   cd sox-14.4.2
-   ./configure --prefix=$HOME/.local --without-alsa --without-oss --without-ladspa \
-     --without-magic --without-id3tag --without-mp3 --without-flac --without-ogg \
-     --without-vorbis --without-opus --without-wavpack --without-png --without-gsm
-   make -j"$(nproc)"
-   make install
-   ```
-
-5) Install dev tools:
-   ```bash
-   make dev-install
-   ```
-
-## File layout
-
-```
-tts-storyteller/
-  api/
-    __init__.py
-    main.py              # FastAPI application
-  lib/                   # Reusable library modules
-    __init__.py
-    paths.py
-    models.py
-    validation.py
-    resolution.py
-    generation.py
-    storage.py
-  scripts/
-    __init__.py
-    common.py
-    voice_design.py
-    create_prompts.py
-    storyteller.py      # JSON story generation
-    validate_story.py
-    convert_txt.py      # Convert old .txt format to JSON
-  docs/
-    openapi.json
-    story-template.schema.json
-    web-app.md
-  stories/              # JSON story templates
-    template.json
-  voices/
-    voices.json
-  prompts/              # Voice prompt files (.pt)
-  outputs/
-    voice_design/
-    story/
-  tests/                # Test files
-  env.sh
-  run.sh
-  Makefile              # Development tasks
-  pyproject.toml        # Project configuration
-  requirements.txt       # Production dependencies
-  .pre-commit-config.yaml
-  .gitignore
-```
-
+- `docs/ARCHITECTURE.md` - system design and data flow
+- `docs/BACKENDS.md` - backend details and model tradeoffs
+- `docs/SWAGGER.md` - API examples and Swagger usage
+- `docs/features/` - implementation notes for upload, cloning, and VibeVoice work
+- `docs/openapi.json` - OpenAPI export
+- `docs/story-template.schema.json` - story template JSON schema
 
 ## License
 
-This project is licensed under the MIT License. See `LICENSE`.
+This repository is MIT licensed. See `LICENSE`.
 
-TTS Storyteller integrates with third-party TTS backends and model packages. Their model weights, packages, and generated-output policies are governed by their own upstream licenses and terms.
+Third-party model weights and packages are governed by their own licenses and terms. Check the relevant Qwen3-TTS and VibeVoice model/package pages before redistributing models or generated assets.

@@ -829,7 +829,7 @@
     "/audio/upload": {
       "post": {
         "summary": "Upload Reference Audio",
-        "description": "Upload a reference audio file for voice cloning.\n\nAccepts WAV files. Returns the file path to use in ref_audio_url.\n\nReturns:\n    {\"file_path\": \"uploads/reference_audio/filename.wav\"}",
+        "description": "Upload a WAV reference clip for voice cloning.\n\nThe file is stored under `uploads/reference_audio/` with a sanitized unique\nname. Use the returned `file_path` as `ref_audio_url` when cloning a voice.",
         "operationId": "upload_reference_audio_audio_upload_post",
         "requestBody": {
           "content": {
@@ -872,7 +872,7 @@
     "/audio/voices/{voiceId}.wav": {
       "get": {
         "summary": "Get Voice Audio",
-        "description": "Download the reference/sample audio for a voice.\n\nReturns 404 if the voice has not been generated yet (no WAV file).",
+        "description": "Download the reference/sample audio for a voice.",
         "operationId": "get_voice_audio_audio_voices__voiceId__wav_get",
         "parameters": [
           {
@@ -910,7 +910,7 @@
     "/audio/stories/{storyId}/full.wav": {
       "get": {
         "summary": "Get Story Audio",
-        "description": "Download the concatenated audio file for a story.\n\nNote: This endpoint only works if the story was generated with `concat: true`.\nIf `concat: false`, individual audio files are in the output directory but\nno concatenated file exists. Use `/audio/stories/{storyId}/files` to list individual files.",
+        "description": "Download the concatenated audio file for a story.",
         "operationId": "get_story_audio_audio_stories__storyId__full_wav_get",
         "parameters": [
           {
@@ -948,7 +948,7 @@
     "/audio/stories/{storyId}/files": {
       "get": {
         "summary": "List Story Audio Files",
-        "description": "List all individual audio files for a story.\n\nReturns a list of filenames in the story's output directory.\nThese are the individual line audio files (e.g., \"001_narrator_male.wav\").",
+        "description": "List all individual audio files for a story.",
         "operationId": "list_story_audio_files_audio_stories__storyId__files_get",
         "parameters": [
           {
@@ -992,7 +992,7 @@
     "/audio/stories/{storyId}/files/{filename}": {
       "get": {
         "summary": "Get Story Audio File",
-        "description": "Download a specific individual audio file for a story.\n\nUse GET /audio/stories/{storyId}/files to list available filenames.",
+        "description": "Download a specific individual audio file for a story.",
         "operationId": "get_story_audio_file_audio_stories__storyId__files__filename__get",
         "parameters": [
           {

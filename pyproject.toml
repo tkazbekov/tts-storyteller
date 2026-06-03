@@ -1,7 +1,9 @@
 [project]
 name = "tts-storyteller"
 version = "0.1.0"
-description = "Multi-backend TTS API for multi-voice story generation"
+description = "Local multi-backend TTS API and CLI for multi-voice story generation"
+authors = [{ name = "Timur Kazbekov" }]
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
@@ -133,11 +135,13 @@ qwen = [
     "qwen-tts>=0.0.5",
 ]
 vibevoice = [
-    # VibeVoice dependencies to be added
+    "bitsandbytes>=0.41.0",
 ]
 all = [
     "qwen-tts>=0.0.5",
+    "bitsandbytes>=0.41.0",
 ]
+
 
 [tool.ruff]
 line-length = 100

@@ -44,7 +44,7 @@ async def _get_voice_backends(voice_ids: set[str]) -> dict[str, str]:
     for voice_id in voice_ids:
         try:
             voice = await voice_repo.get(voice_id)
-            backend_map[voice_id] = voice.backend
+            backend_map[voice_id] = voice.get("backend", "qwen") if voice else "qwen"
         except Exception:
             # If voice not found or error, default to qwen
             backend_map[voice_id] = "qwen"

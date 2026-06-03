@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-import os
+from pathlib import Path
 
 from common import TTSBackendFactory, read_json, save_wav, write_json
 
@@ -10,12 +10,8 @@ DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate designed voices from a config file.")
     parser.add_argument("--config", default="voices/voices.json", help="Path to voices config JSON")
-    parser.add_argument(
-        "--out-dir", default="outputs/voice_design", help="Directory for generated WAV files"
-    )
-    parser.add_argument(
-        "--backend", default="qwen", help="TTS backend to use (qwen, vibevoice, etc.)"
-    )
+    parser.add_argument("--out-dir", default=None, help="Directory for generated WAV files")
+    parser.add_argument("--backend", default="qwen", help="TTS backend to use: qwen")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="VoiceDesign model id")
     parser.add_argument("--device", default="cuda:0", help="Device map, e.g. cuda:0 or cpu")
     parser.add_argument("--dtype", default="bfloat16", help="bf16|fp16|fp32")
@@ -23,11 +19,16 @@ def main() -> int:
     parser.add_argument("--max-new-tokens", type=int, default=None)
     args = parser.parse_args()
 
+    if args.backend != "qwen":
+        raise SystemExit("Voice design from text is currently supported only by the qwen backend")
+
+    out_dir = Path(args.out_dir or Path("outputs") / "voice_design" / args.backend)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     voices = read_json(args.config)
     if not isinstance(voices, list):
         raise SystemExit("voices.json must be a list")
 
-    # Create backend
     backend = TTSBackendFactory.create(
         backend_type=args.backend,
         model_id=args.model,
@@ -57,22 +58,23 @@ def main() -> int:
             instruction=instruct,
             **kwargs,
         )
-        out_path = os.path.join(args.out_dir, f"{voice_id}.wav")
+        out_path = out_dir / f"{voice_id}.wav"
         save_wav(out_path, result.audio, result.sample_rate)
 
         meta_out.append(
             {
                 "id": voice_id,
+                "backend": args.backend,
                 "language": language,
                 "instruction": instruct,
                 "sample_text": text,
-                "ref_audio": out_path,
+                "ref_audio": str(out_path),
                 "ref_text": text,
             }
         )
         print(f"Wrote {out_path}")
 
-    write_json(os.path.join(args.out_dir, "voice_design_meta.json"), meta_out)
+    write_json(out_dir / "voice_design_meta.json", meta_out)
     return 0
 
 
