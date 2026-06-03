@@ -1,20 +1,20 @@
-# Qwen3-TTS Local Playground
+# TTS Storyteller
 
-This folder is a minimal, reproducible setup for Qwen3-TTS with:
+TTS Storyteller is a local, multi-backend text-to-speech API and CLI for generating multi-voice stories. It currently supports Qwen3-TTS and VibeVoice backends with:
 - UV for Python venv and package management (faster than pip)
 - CUDA + FlashAttention
 - Scripts to design voices and reuse them for storytelling
 - FastAPI backend for story management and generation
 
 
-This repo is meant as a small, explicit pipeline you can rerun and tweak. The core flow is:
+This repo is meant as a small, explicit pipeline you can rerun, extend, and publish independently of any single model backend. The core flow is:
 1) design voices (VoiceDesign model)
 2) turn those voices into prompt files (Base model)
 3) generate a multi-voice story (Base model) via API or CLI
 
 ## What is installed
 
-- Python 3.12 venv at `~/qwen3-tts/.venv`
+- Python 3.12 venv at `~/tts-storyteller/.venv`
 - PyTorch pinned to a FlashAttention-compatible combo:
   - torch 2.8.0+cu128
   - torchaudio 2.8.0+cu128
@@ -28,7 +28,7 @@ This repo is meant as a small, explicit pipeline you can rerun and tweak. The co
 ### Development setup
 
 ```bash
-cd ~/qwen3-tts
+cd ~/tts-storyteller
 source env.sh
 
 # Install dependencies
@@ -70,7 +70,7 @@ See `make help` for all available commands.
 ### Project structure
 
 ```
-qwen3-tts/
+tts-storyteller/
   api/              # FastAPI application
     app.py          # FastAPI app setup
     main.py         # API entrypoint
@@ -111,7 +111,7 @@ Edit `voices/voices.json` to describe the characters.
 Then run:
 
 ```bash
-cd ~/qwen3-tts
+cd ~/tts-storyteller
 source ./env.sh
 python scripts/voice_design.py --config voices/voices.json
 ```
@@ -125,7 +125,7 @@ Outputs:
 Use the voice WAVs + text to build prompt files for stable reuse:
 
 ```bash
-cd ~/qwen3-tts
+cd ~/tts-storyteller
 source ./env.sh
 python scripts/create_prompts.py --config voices/voices.json
 ```
@@ -162,7 +162,7 @@ curl http://localhost:8000/audio/stories/template/full.wav -o story.wav
 **Via CLI:**
 
 ```bash
-cd ~/qwen3-tts
+cd ~/tts-storyteller
 source ./env.sh
 python scripts/storyteller.py --story template
 ```
@@ -504,12 +504,12 @@ If you change Python/Torch/CUDA versions, FlashAttention may need a different wh
    curl -LsSf https://astral.sh/uv/install.sh | sh
    source ~/.local/bin/env
    uv python install 3.12
-   uv venv -p 3.12 ~/qwen3-tts/.venv
+   uv venv -p 3.12 ~/tts-storyteller/.venv
    ```
 
 2) Install qwen-tts + CUDA PyTorch:
    ```bash
-   source ~/qwen3-tts/.venv/bin/activate
+   source ~/tts-storyteller/.venv/bin/activate
    uv pip install -U qwen-tts
    uv pip install --upgrade \
      torch==2.8.0+cu128 \
@@ -545,7 +545,7 @@ If you change Python/Torch/CUDA versions, FlashAttention may need a different wh
 ## File layout
 
 ```
-qwen3-tts/
+tts-storyteller/
   api/
     __init__.py
     main.py              # FastAPI application
@@ -586,3 +586,10 @@ qwen3-tts/
   .pre-commit-config.yaml
   .gitignore
 ```
+
+
+## License
+
+This project is licensed under the MIT License. See `LICENSE`.
+
+TTS Storyteller integrates with third-party TTS backends and model packages. Their model weights, packages, and generated-output policies are governed by their own upstream licenses and terms.

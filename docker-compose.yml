@@ -1,17 +1,17 @@
 services:
   db:
     image: postgres:16
-    container_name: qwen3_tts_db
+    container_name: tts_storyteller_db
     environment:
-      POSTGRES_USER: qwen_tts
+      POSTGRES_USER: tts_storyteller
       POSTGRES_PASSWORD: dev_password
-      POSTGRES_DB: qwen_tts
+      POSTGRES_DB: tts_storyteller
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U qwen_tts -d qwen_tts"]
+      test: ["CMD-SHELL", "pg_isready -U tts_storyteller -d tts_storyteller"]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -46,7 +46,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_cors_origins_env = os.getenv("TTS_CORS_ORIGINS") or os.getenv("QWEN3_TTS_CORS_ORIGINS", "*")
+_cors_origins_env = os.getenv("TTS_CORS_ORIGINS") or "*"
 _cors_origins = (
     ["*"]
     if _cors_origins_env == "*"

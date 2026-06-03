@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Qwen3-TTS Local Playground - a Python text-to-speech system built around Alibaba's Qwen3-TTS models for multi-voice story generation. The core workflow is:
+TTS Storyteller - a Python text-to-speech system built around pluggable TTS backends, currently Qwen3-TTS and VibeVoice, for multi-voice story generation. The core workflow is:
 1. Design voices (VoiceDesign model) -> WAV files
 2. Create reusable prompts (Base model) -> `.pt` files
 3. Generate multi-voice stories (Base model) via API or CLI

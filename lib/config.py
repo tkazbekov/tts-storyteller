@@ -95,24 +95,18 @@ class TTSConfig:
         - TTS_VIBEVOICE_QUANTIZATION
         - TTS_VIBEVOICE_API_KEY
 
-        Backward compatibility:
-        - QWEN3_TTS_* variables are supported as fallbacks
         """
-        device = os.getenv("TTS_DEVICE") or os.getenv("QWEN3_TTS_DEVICE") or "cuda:0"
+        device = os.getenv("TTS_DEVICE") or "cuda:0"
 
         return cls(
             default_backend=os.getenv("TTS_DEFAULT_BACKEND", "qwen"),  # type: ignore
             device=device,
             # Qwen base model
             qwen_base=BackendConfig(
-                model_id=os.getenv("TTS_QWEN_BASE_MODEL")
-                or os.getenv("QWEN3_TTS_MODEL")
-                or "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+                model_id=os.getenv("TTS_QWEN_BASE_MODEL") or "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
                 device=device,
-                dtype=os.getenv("TTS_QWEN_DTYPE") or os.getenv("QWEN3_TTS_DTYPE") or "bfloat16",
-                attn=os.getenv("TTS_QWEN_ATTN")
-                or os.getenv("QWEN3_TTS_ATTN")
-                or "flash_attention_2",
+                dtype=os.getenv("TTS_QWEN_DTYPE") or "bfloat16",
+                attn=os.getenv("TTS_QWEN_ATTN") or "flash_attention_2",
                 extras={
                     "max_new_tokens": int(os.getenv("TTS_QWEN_MAX_NEW_TOKENS", "2048")),
                     "top_p": float(os.getenv("TTS_QWEN_TOP_P", "0.95")),
@@ -122,13 +116,10 @@ class TTSConfig:
             # Qwen voice design model
             qwen_voice_design=BackendConfig(
                 model_id=os.getenv("TTS_QWEN_VOICE_DESIGN_MODEL")
-                or os.getenv("QWEN3_TTS_VOICE_DESIGN_MODEL")
                 or "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
                 device=device,
-                dtype=os.getenv("TTS_QWEN_DTYPE") or os.getenv("QWEN3_TTS_DTYPE") or "bfloat16",
-                attn=os.getenv("TTS_QWEN_ATTN")
-                or os.getenv("QWEN3_TTS_ATTN")
-                or "flash_attention_2",
+                dtype=os.getenv("TTS_QWEN_DTYPE") or "bfloat16",
+                attn=os.getenv("TTS_QWEN_ATTN") or "flash_attention_2",
             ),
             # VibeVoice base model
             vibevoice_base=BackendConfig(

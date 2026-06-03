@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.local/qwen3-tts/story-template.schema.json",
+  "$id": "https://example.local/tts-storyteller/story-template.schema.json",
   "title": "StoryTemplate",
   "type": "object",
   "additionalProperties": false,

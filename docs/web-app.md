@@ -1,4 +1,4 @@
-# Qwen3-TTS Web App Plan
+# TTS Storyteller Web App Plan
 
 This app is intended for home use to manage voices, create role-based stories, and generate audio.
 The backend lives in this repo; the frontend can be a separate repo.

@@ -8,7 +8,7 @@ Multi-backend text-to-speech system with voice-driven routing and parallel execu
 
 ```bash
 # Setup
-cd ~/qwen3-tts
+cd ~/tts-storyteller
 source env.sh
 make install
 pip install -r requirements-qwen.txt

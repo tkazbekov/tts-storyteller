@@ -1,1 +1,1 @@
-"""Qwen3-TTS library modules for story processing, validation, and generation."""
+"""TTS Storyteller library modules for story processing, validation, and generation."""

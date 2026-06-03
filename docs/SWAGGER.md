@@ -11,7 +11,7 @@ The TTS Storyteller API includes interactive Swagger UI documentation for easy A
 Start the API server:
 
 ```bash
-cd ~/qwen3-tts
+cd ~/tts-storyteller
 source env.sh
 make run-api
 ```

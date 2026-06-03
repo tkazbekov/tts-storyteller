@@ -1,1 +1,1 @@
-"""Tests for qwen3-tts."""
+"""Tests for TTS Storyteller."""

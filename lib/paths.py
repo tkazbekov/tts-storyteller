@@ -7,7 +7,7 @@ from pathlib import Path
 def get_project_root() -> Path:
     """Get the project root directory (tts-storyteller)."""
     # Try new environment variable first, fall back to old one for backward compatibility
-    root = os.environ.get("TTS_ROOT") or os.environ.get("QWEN3_TTS_ROOT")
+    root = os.environ.get("TTS_ROOT")
     if root:
         return Path(root).resolve()
 
