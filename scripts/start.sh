@@ -75,7 +75,6 @@ fi
 
 if [ "$RUN_MIGRATIONS" = 1 ]; then
   alembic upgrade head
-  python scripts/migrate_to_db.py || true
 fi
 
 if [ "$DOWNLOAD_MODELS" = 1 ]; then

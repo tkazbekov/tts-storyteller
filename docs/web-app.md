@@ -21,7 +21,7 @@ The backend lives in this repo; the frontend can be a separate repo.
 
 ### API Implementation
 
-All endpoints are fully implemented in `api/main.py`:
+All endpoints are implemented under `api/routes/` (mounted by `api/app.py`):
 
 - `GET /voices` - List all available voices
 - `GET /voices/{voiceId}` - Get voice details
@@ -38,8 +38,8 @@ All endpoints are fully implemented in `api/main.py`:
 
 ### Storage model
 
-- `voices/` + `prompts/` + `outputs/` stay file-based
-- `stories/` holds JSON templates (one file per story)
+- Stories, voices, and pools live in Postgres (SQLAlchemy + Alembic migrations)
+- Prompt files (`prompts/<backend>/`) and generated audio (`outputs/`) stay on disk
 - Active jobs (queued/running) in-memory only; completed jobs (succeeded/failed) persisted for history
 
 ### Job runner
@@ -55,8 +55,8 @@ All endpoints are fully implemented in `api/main.py`:
 - **Model caching**: TTS model loaded once on first use, reused for all generations
 - **Async generation**: Non-blocking job system using `asyncio.to_thread()`
 - **Validation**: Story templates validated on create/update
-- **CORS enabled**: Ready for mobile web app access
-- **File-based storage**: Simple, no database needed
+- **CORS configurable**: via `TTS_CORS_ORIGINS`
+- **Postgres-backed storage**: stories, voices, and pools persisted in a database
 
 ## Frontend (new repo)
 
@@ -81,8 +81,8 @@ All endpoints are fully implemented in `api/main.py`:
 - Story template example: `stories/template.json`
 - Validator: `scripts/validate_story.py` + `lib/validation.py`
 - OpenAPI spec: `docs/openapi.json`
-- FastAPI implementation: `api/main.py` (fully functional)
-- File-based storage for stories
+- FastAPI implementation: `api/app.py` + `api/routes/` (fully functional)
+- Postgres-backed storage for stories, voices, and pools
 - Role-to-voice resolution
 - Async job system with status tracking
 - Audio serving endpoint

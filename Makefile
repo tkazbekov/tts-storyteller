@@ -1,4 +1,4 @@
-.PHONY: help check-venv install install-qwen install-vibevoice dev-install lint lint-fix format type-check test check clean run-api db-up db-down apply-migrations migrate-legacy db-setup download-models start
+.PHONY: help check-venv install install-qwen install-vibevoice dev-install lint lint-fix format type-check test check clean run-api db-up db-down apply-migrations db-setup download-models start
 
 BACKEND ?= qwen
 PYTHON ?= python3.12
@@ -76,10 +76,7 @@ db-down: ## Stop local Postgres
 apply-migrations: check-venv ## Run Alembic migrations, requires DATABASE_URL
 	bash -c 'source env.sh && alembic upgrade head'
 
-migrate-legacy: check-venv ## Import legacy JSON data into Postgres, requires DATABASE_URL
-	bash -c 'source env.sh && python scripts/migrate_to_db.py'
-
-db-setup: apply-migrations migrate-legacy ## Apply schema migrations then import legacy data
+db-setup: apply-migrations ## Apply schema migrations
 
 download-models: check-venv ## Pre-download Hugging Face models; set BACKEND=qwen|vibevoice|all
 	bash -c 'source env.sh && python scripts/download_models.py --backend $(BACKEND)'

@@ -7,7 +7,7 @@ TTS Storyteller is an independent API/CLI wrapper around third-party TTS models.
 - Qwen3-TTS for fast story narration, text-described voice design, and voice-clone prompts.
 - VibeVoice for experimental reference-audio voice cloning and long-form dialogue.
 - FastAPI endpoints for voices, stories, jobs, and audio downloads/uploads.
-- CLI scripts for prompt creation, story validation, migration, and generation.
+- CLI scripts for prompt creation, story validation, and generation.
 
 Status: usable local project, still early. Qwen is the main tested path. VibeVoice support is implemented but should be treated as experimental until you run an end-to-end generation on your GPU.
 
@@ -102,7 +102,7 @@ Model weights are downloaded by Hugging Face tooling into your normal HF cache, 
 api/                  FastAPI app and routes
 lib/                  Core models, storage, backends, config, generation helpers
 services/             Async job orchestration and API service layer
-scripts/              Setup, model download, migration, and generation CLIs
+scripts/              Setup, model download, and generation CLIs
 stories/              Example story templates
 voices/               Example voice and pool definitions
 prompts/              Small reusable prompt examples and generated prompt placeholders
@@ -219,8 +219,9 @@ Before publishing or pushing a release branch, run:
 ```bash
 make check
 git diff --check
-review tracked files for local paths, LAN hostnames/IPs, and secret values
 ```
+
+Then review tracked files for local paths, LAN hostnames/IPs, and secret values before pushing.
 
 ## Documentation
 
