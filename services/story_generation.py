@@ -220,8 +220,6 @@ async def generate_story(story_id: str, request_params: dict[str, Any] | None) -
     else:
         # Single backend: use optimized path (no parallel overhead)
         backend_type = list(grouped_lines.keys())[0]
-        grouped_lines[backend_type]
-
         tts_backend = get_backend(backend_type, "base")
 
         output_path = await asyncio.to_thread(

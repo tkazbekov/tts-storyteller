@@ -8,6 +8,7 @@ from lib.models import Voice, VoiceCloneConfig, VoiceConfig
 from lib.repositories import get_pool_repository, get_voice_repository
 from lib.voice_metadata import should_regenerate_voice
 from services.jobs import enqueue_voice_clone_job, enqueue_voice_job, get_active_voice_job
+from services.voice_generation import resolve_reference_audio
 
 router = APIRouter()
 
@@ -101,6 +102,11 @@ async def clone_voice_endpoint(voice_config: VoiceCloneConfig):
     Generates prompt from reference audio, updates voices.json.
     Returns a job ID to track generation progress.
     """
+    try:
+        resolve_reference_audio(voice_config.ref_audio_url)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+
     voice_repo = get_voice_repository()
     existing = await voice_repo.get(voice_config.id)
     if existing:
