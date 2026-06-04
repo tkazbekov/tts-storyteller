@@ -15,6 +15,7 @@ from lib.paths import (
     get_story_output_dir,
     get_voice_ref_audio_path,
 )
+from lib.repositories import get_voice_repository
 
 router = APIRouter()
 
@@ -78,9 +79,11 @@ async def upload_reference_audio(file: UploadFile = File(...)) -> dict[str, str]
 
 
 @router.get("/audio/voices/{voiceId}.wav")
-def get_voice_audio(voiceId: str) -> FileResponse:
-    """Download the reference/sample audio for a voice."""
-    audio_path = get_voice_ref_audio_path(voiceId)
+async def get_voice_audio(voiceId: str) -> FileResponse:
+    """Download the backend-specific reference/sample audio for a voice."""
+    voice = await get_voice_repository().get(voiceId)
+    backend = voice.get("backend", "qwen") if voice else "qwen"
+    audio_path = get_voice_ref_audio_path(voiceId, backend)
 
     if not audio_path.exists():
         raise HTTPException(

@@ -7,7 +7,6 @@ from lib.models import StoryTemplate, VoiceConfig
 from lib.paths import (
     get_pools_config_path,
     get_prompt_path,
-    get_prompts_dir,
     get_stories_dir,
     get_story_path,
     get_voice_ref_audio_path,
@@ -65,21 +64,26 @@ def load_voices_config() -> list[dict[str, Any]]:
 
 
 def get_available_voice_ids() -> set[str]:
-    """Get set of available voice IDs (those with prompt files)."""
-    prompts_dir = get_prompts_dir()
-    if not prompts_dir.exists():
-        return set()
-
-    voice_ids = set()
-    for path in prompts_dir.glob("*.pt"):
-        voice_ids.add(path.stem)
+    """Get set of available voice IDs (those with backend-specific prompt files)."""
+    voice_ids: set[str] = set()
+    for voice in load_voices_config():
+        voice_id = voice.get("id")
+        if not isinstance(voice_id, str) or not voice_id:
+            continue
+        backend = voice.get("backend", "qwen")
+        if get_prompt_path(voice_id, backend).exists():
+            voice_ids.add(voice_id)
 
     return voice_ids
 
 
 def voice_has_prompt(voice_id: str) -> bool:
-    """Check if a voice has a prompt file."""
-    return get_prompt_path(voice_id).exists()
+    """Check if a voice has a backend-specific prompt file."""
+    voice_config = load_voice_config(voice_id)
+    if not voice_config:
+        return False
+    backend = voice_config.get("backend", "qwen")
+    return get_prompt_path(voice_id, backend).exists()
 
 
 def load_voice_config(voice_id: str) -> dict[str, Any] | None:
@@ -145,14 +149,16 @@ def get_voice_info(voice_id: str) -> dict[str, Any] | None:
     if not voice_config:
         return None
 
-    prompt_path = get_prompt_path(voice_id)
-    ref_audio_path = get_voice_ref_audio_path(voice_id)
+    backend = voice_config.get("backend", "qwen")
+    prompt_path = get_prompt_path(voice_id, backend)
+    ref_audio_path = get_voice_ref_audio_path(voice_id, backend)
 
     info = {
         "id": voice_id,
         "language": voice_config.get("language", "English"),
         "instruction": voice_config.get("instruction", ""),
         "sample_text": voice_config.get("sample_text"),
+        "backend": backend,
         "promptPath": str(prompt_path) if prompt_path.exists() else None,
         "refAudioPath": str(ref_audio_path) if ref_audio_path.exists() else None,
     }

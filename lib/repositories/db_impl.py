@@ -234,6 +234,7 @@ class DbVoiceRepository:
                 "language": voice.language,
                 "instruction": voice.instruction,
                 "sample_text": voice.sample_text,
+                "backend": voice.backend,
             }
 
     async def get_info(self, voice_id: str) -> dict[str, Any] | None:
@@ -242,14 +243,16 @@ class DbVoiceRepository:
         if not voice:
             return None
 
-        prompt_path = get_prompt_path(voice_id)
-        ref_audio_path = get_voice_ref_audio_path(voice_id)
+        backend = voice.get("backend", "qwen")
+        prompt_path = get_prompt_path(voice_id, backend)
+        ref_audio_path = get_voice_ref_audio_path(voice_id, backend)
 
         return {
             "id": voice_id,
             "language": voice.get("language", "English"),
             "instruction": voice.get("instruction", ""),
             "sample_text": voice.get("sample_text"),
+            "backend": backend,
             "promptPath": str(prompt_path) if prompt_path.exists() else None,
             "refAudioPath": str(ref_audio_path) if ref_audio_path.exists() else None,
         }
@@ -270,6 +273,7 @@ class DbVoiceRepository:
                     "language": v.language,
                     "instruction": v.instruction,
                     "sample_text": v.sample_text,
+                    "backend": v.backend,
                 }
                 for v in voices
             ]
@@ -288,12 +292,14 @@ class DbVoiceRepository:
                 existing.language = voice_config.language
                 existing.instruction = voice_config.instruction
                 existing.sample_text = voice_config.sample_text
+                existing.backend = voice_config.backend
             else:
                 voice = VoiceModel(
                     id=voice_config.id,
                     language=voice_config.language,
                     instruction=voice_config.instruction,
                     sample_text=voice_config.sample_text,
+                    backend=voice_config.backend,
                 )
                 session.add(voice)
 
@@ -307,13 +313,18 @@ class DbVoiceRepository:
             await session.execute(stmt)
 
     async def get_available_ids(self) -> set[str]:
-        """Get set of voice IDs with prompt files."""
+        """Get set of voice IDs with backend-specific prompt files."""
         all_voices = await self.list_all()
-        return {v["id"] for v in all_voices if get_prompt_path(v["id"]).exists()}
+        return {
+            v["id"]
+            for v in all_voices
+            if get_prompt_path(v["id"], v.get("backend", "qwen")).exists()
+        }
 
     async def has_prompt(self, voice_id: str) -> bool:
-        """Check if voice has a prompt file."""
-        return get_prompt_path(voice_id).exists()
+        """Check if voice has a backend-specific prompt file."""
+        voice = await self.get(voice_id)
+        return bool(voice and get_prompt_path(voice_id, voice.get("backend", "qwen")).exists())
 
 
 class DbPoolRepository:

@@ -73,8 +73,11 @@ class FileVoiceRepository:
         return storage.get_available_voice_ids()
 
     def has_prompt(self, voice_id: str) -> bool:
-        """Check if voice has a prompt file."""
-        return get_prompt_path(voice_id).exists()
+        """Check if voice has a backend-specific prompt file."""
+        voice = self.get(voice_id)
+        if not voice:
+            return False
+        return get_prompt_path(voice_id, voice.get("backend", "qwen")).exists()
 
 
 class FilePoolRepository:

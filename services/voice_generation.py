@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 from pathlib import Path
 
 from lib.models import VoiceCloneConfig, VoiceConfig
+from lib.paths import get_voice_ref_audio_path
 from lib.repositories import get_voice_repository
 from lib.voice_generation import generate_voice, generate_voice_prompt
 from services.models import get_backend
@@ -70,6 +72,12 @@ async def generate_voice_clone_job(voice_id: str, voice_config: VoiceCloneConfig
         tts_backend=base_backend,
         backend=backend_type,
     )
+
+    # Keep a stable backend-specific reference WAV for API playback/UI previews.
+    stored_ref_audio_path = get_voice_ref_audio_path(voice_id, backend_type)
+    stored_ref_audio_path.parent.mkdir(parents=True, exist_ok=True)
+    if ref_audio_path.resolve() != stored_ref_audio_path.resolve():
+        shutil.copyfile(ref_audio_path, stored_ref_audio_path)
 
     # Save voice config (convert to VoiceConfig format for storage)
     voice_config_for_storage = VoiceConfig(
