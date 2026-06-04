@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,8 @@ from api.routes import audio, jobs, pools, stories, voices
 from lib.database import close_database, init_database
 from lib.env import load_env
 from services.jobs import recover_jobs_on_startup, start_worker
+
+logger = logging.getLogger(__name__)
 
 load_env()
 
@@ -28,7 +31,7 @@ async def lifespan(app: FastAPI):
     await init_database()
     recovered = await recover_jobs_on_startup()
     if recovered > 0:
-        print(f"[Jobs] Recovered {recovered} queued jobs from database")
+        logger.info("Recovered %d queued jobs from database", recovered)
 
     # Start the job processing worker
     start_worker()

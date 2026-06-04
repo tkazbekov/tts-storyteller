@@ -1,5 +1,6 @@
 """Voice generation logic - generate WAV files and prompts for voices."""
 
+import logging
 from pathlib import Path
 
 from lib.backends import TTSBackend
@@ -7,6 +8,8 @@ from lib.models import VoiceConfig
 from lib.paths import get_prompt_path, get_voice_ref_audio_path
 from lib.runtime import save_wav
 from lib.voice_metadata import save_voice_metadata, should_regenerate_voice
+
+logger = logging.getLogger(__name__)
 
 
 def generate_voice_wav(
@@ -122,19 +125,19 @@ def generate_voice(
 
     # Generate WAV if needed
     if regenerate_wav or not wav_path.exists():
-        print(f"[Voice] Generating WAV for voice '{voice_id}' using {backend} backend...")
+        logger.info("Generating WAV for voice '%s' using %s backend", voice_id, backend)
         wav_path = generate_voice_wav(voice_id, voice_config, voice_design_backend)
     else:
-        print(f"[Voice] Reusing existing WAV for voice '{voice_id}'")
+        logger.info("Reusing existing WAV for voice '%s'", voice_id)
 
     # Generate prompt if needed
     if regenerate_prompt or not prompt_path.exists():
-        print(f"[Voice] Generating prompt for voice '{voice_id}' using {backend} backend...")
+        logger.info("Generating prompt for voice '%s' using %s backend", voice_id, backend)
         prompt_path = generate_voice_prompt(
             voice_id, wav_path, voice_config.sample_text, base_backend, backend, x_vector_only_mode
         )
     else:
-        print(f"[Voice] Reusing existing prompt for voice '{voice_id}'")
+        logger.info("Reusing existing prompt for voice '%s'", voice_id)
 
     # Save metadata for future incremental generation
     save_voice_metadata(voice_id, voice_config)
