@@ -97,6 +97,15 @@ def get_voice_design_dir(backend: str | None = None) -> Path:
     return base
 
 
+# File extension used for each backend's serialized prompt files.
+PROMPT_FILE_EXTENSIONS = {"qwen": ".pt", "vibevoice": ".json"}
+
+
+def get_prompt_extension(backend: str) -> str:
+    """Return the prompt-file extension for a backend (.pt for Qwen, .json otherwise)."""
+    return PROMPT_FILE_EXTENSIONS.get(backend, ".json")
+
+
 def get_prompt_path(voice_id: str, backend: str = "qwen") -> Path:
     """Get the path to a prompt file for a voice.
 
@@ -109,8 +118,7 @@ def get_prompt_path(voice_id: str, backend: str = "qwen") -> Path:
         - Qwen: .pt (PyTorch)
         - VibeVoice: .json
     """
-    ext = ".pt" if backend == "qwen" else ".json"
-    return get_prompts_dir(backend) / f"{voice_id}{ext}"
+    return get_prompts_dir(backend) / f"{voice_id}{get_prompt_extension(backend)}"
 
 
 def get_story_path(story_id: str) -> Path:

@@ -37,6 +37,20 @@ class TTSBackend(ABC):
         """Unique identifier for this backend (e.g., 'qwen', 'vibevoice')."""
         pass
 
+    @property
+    def supports_voice_design(self) -> bool:
+        """Whether this backend can synthesize a voice from a text description."""
+        return False
+
+    @property
+    def requires_ref_text_for_clone(self) -> bool:
+        """Whether voice cloning requires a reference transcript (ref_text)."""
+        return False
+
+    def unload(self) -> None:
+        """Release any loaded model/resources. Backends override as needed."""
+        return None
+
     @abstractmethod
     def generate_voice_design(
         self, text: str, language: str, instruction: str, **kwargs: Any

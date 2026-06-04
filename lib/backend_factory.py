@@ -32,7 +32,7 @@ class TTSBackendFactory:
 
         Args:
             backend_type: Backend type ("qwen", "vibevoice", etc.)
-                         If None, reads from TTS_BACKEND env var (default: "qwen")
+                         If None, reads from TTS_DEFAULT_BACKEND env var (default: "qwen")
             **config: Backend-specific configuration
 
         Returns:
@@ -42,7 +42,7 @@ class TTSBackendFactory:
             ValueError: If backend_type is unknown
         """
         if backend_type is None:
-            backend_type = os.getenv("TTS_BACKEND", "qwen")
+            backend_type = os.getenv("TTS_DEFAULT_BACKEND", "qwen")
 
         backend_class = cls._backends.get(backend_type)
         if backend_class is None:

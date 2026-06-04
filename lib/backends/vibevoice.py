@@ -6,6 +6,7 @@ from typing import Any
 
 import torch
 
+from lib.backends._torch_utils import parse_dtype
 from lib.backends.base import AudioResult, TTSBackend, VoicePrompt
 
 
@@ -78,7 +79,7 @@ class VibeVoiceBackend(TTSBackend):
         )
 
         # Parse dtype
-        torch_dtype = self._parse_dtype(self.dtype)
+        torch_dtype = parse_dtype(self.dtype)
 
         # Load with quantization if specified
         kwargs: dict[str, Any] = {
@@ -106,16 +107,12 @@ class VibeVoiceBackend(TTSBackend):
 
         self._processor = VibeVoiceProcessor.from_pretrained(self.model_id)
 
-    def _parse_dtype(self, dtype_str: str) -> torch.dtype:
-        """Parse dtype string to torch dtype."""
-        v = dtype_str.lower()
-        if v in {"bfloat16", "bf16"}:
-            return torch.bfloat16
-        if v in {"float16", "fp16"}:
-            return torch.float16
-        if v in {"float32", "fp32"}:
-            return torch.float32
-        raise ValueError(f"Unsupported dtype: {dtype_str}")
+    def unload(self) -> None:
+        """Release the model and processor so their memory can be reclaimed."""
+        self._model = None
+        self._processor = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def generate_voice_design(
         self, text: str, language: str, instruction: str, **kwargs: Any

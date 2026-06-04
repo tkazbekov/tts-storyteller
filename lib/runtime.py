@@ -12,36 +12,12 @@ import soundfile as sf  # type: ignore[import-untyped]
 import torch
 from qwen_tts import Qwen3TTSModel, VoiceClonePromptItem
 
-
-def _parse_dtype(dtype_str: str):
-    v = dtype_str.lower()
-    if v in {"bfloat16", "bf16"}:
-        return torch.bfloat16
-    if v in {"float16", "fp16"}:
-        return torch.float16
-    if v in {"float32", "fp32"}:
-        return torch.float32
-    raise ValueError(f"Unsupported dtype: {dtype_str}")
-
-
-def _detect_attn_impl(requested: str) -> str | None:
-    if requested == "none":
-        return None
-    if requested == "auto":
-        try:
-            import flash_attn  # type: ignore[import-untyped] # noqa: F401
-
-            return "flash_attention_2"
-        except Exception:
-            return None
-    if requested == "flash_attention_2":
-        return "flash_attention_2"
-    raise ValueError("attn must be one of: auto, none, flash_attention_2")
+from lib.backends._torch_utils import detect_attn_impl, parse_dtype
 
 
 def load_tts_model(model_id: str, device: str, dtype: str, attn: str) -> Qwen3TTSModel:
-    torch_dtype = _parse_dtype(dtype)
-    attn_impl = _detect_attn_impl(attn)
+    torch_dtype = parse_dtype(dtype)
+    attn_impl = detect_attn_impl(attn)
     kwargs: dict[str, Any] = {
         "device_map": device,
         "dtype": torch_dtype,

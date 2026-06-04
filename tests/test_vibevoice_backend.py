@@ -164,21 +164,6 @@ def test_generate_voice_clone_wrong_backend(vibevoice_backend):
         )
 
 
-def test_parse_dtype(vibevoice_backend):
-    """Test dtype parsing."""
-    import torch
-
-    assert vibevoice_backend._parse_dtype("float16") == torch.float16
-    assert vibevoice_backend._parse_dtype("fp16") == torch.float16
-    assert vibevoice_backend._parse_dtype("float32") == torch.float32
-    assert vibevoice_backend._parse_dtype("fp32") == torch.float32
-    assert vibevoice_backend._parse_dtype("bfloat16") == torch.bfloat16
-    assert vibevoice_backend._parse_dtype("bf16") == torch.bfloat16
-
-    with pytest.raises(ValueError, match="Unsupported dtype"):
-        vibevoice_backend._parse_dtype("invalid")
-
-
 def test_prompt_subdirectory_creation(vibevoice_backend, tmp_path):
     """Test that save_prompt creates parent directories."""
     nested_path = tmp_path / "prompts" / "vibevoice" / "test.json"

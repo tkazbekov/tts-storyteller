@@ -2,7 +2,8 @@
 import argparse
 from pathlib import Path
 
-from common import TTSBackendFactory, read_json, save_wav, write_json
+from lib.backend_factory import TTSBackendFactory
+from lib.runtime import read_json, save_wav, write_json
 
 DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
 
@@ -19,9 +20,6 @@ def main() -> int:
     parser.add_argument("--max-new-tokens", type=int, default=None)
     args = parser.parse_args()
 
-    if args.backend != "qwen":
-        raise SystemExit("Voice design from text is currently supported only by the qwen backend")
-
     out_dir = Path(args.out_dir or Path("outputs") / "voice_design" / args.backend)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -36,6 +34,9 @@ def main() -> int:
         dtype=args.dtype,
         attn=args.attn,
     )
+
+    if not backend.supports_voice_design:
+        raise SystemExit(f"Voice design from text is not supported by the '{args.backend}' backend")
 
     meta_out = []
     for v in voices:

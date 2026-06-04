@@ -3,7 +3,9 @@ import argparse
 import os
 from pathlib import Path
 
-from common import TTSBackendFactory, read_json, write_json
+from lib.backend_factory import TTSBackendFactory
+from lib.paths import get_prompt_extension
+from lib.runtime import read_json, write_json
 
 DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 
@@ -24,7 +26,7 @@ def main() -> int:
 
     out_dir = Path(args.out_dir or Path("prompts") / args.backend)
     out_dir.mkdir(parents=True, exist_ok=True)
-    prompt_ext = ".pt" if args.backend == "qwen" else ".json"
+    prompt_ext = get_prompt_extension(args.backend)
 
     voices = read_json(args.config)
     if not isinstance(voices, list):
@@ -51,8 +53,8 @@ def main() -> int:
             raise SystemExit("Each voice needs id and a reference audio path")
         if not os.path.exists(ref_audio):
             raise SystemExit(f"Reference audio not found: {ref_audio}")
-        if not args.xvec_only and args.backend == "qwen" and not ref_text:
-            raise SystemExit("ref_text is required for Qwen when not using x-vector only")
+        if not args.xvec_only and backend.requires_ref_text_for_clone and not ref_text:
+            raise SystemExit("ref_text is required for this backend when not using x-vector only")
 
         voice_prompt = backend.create_voice_clone_prompt(
             ref_audio=ref_audio,

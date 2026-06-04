@@ -6,6 +6,7 @@ from typing import Any
 import torch
 from qwen_tts import Qwen3TTSModel, VoiceClonePromptItem
 
+from lib.backends._torch_utils import detect_attn_impl, parse_dtype
 from lib.backends.base import AudioResult, TTSBackend, VoicePrompt
 
 
@@ -38,6 +39,14 @@ class QwenTTSBackend(TTSBackend):
         return "qwen"
 
     @property
+    def supports_voice_design(self) -> bool:
+        return True
+
+    @property
+    def requires_ref_text_for_clone(self) -> bool:
+        return True
+
+    @property
     def model(self) -> Qwen3TTSModel:
         """Lazy-load and cache the model."""
         if self._model is None:
@@ -46,8 +55,8 @@ class QwenTTSBackend(TTSBackend):
 
     def _load_model(self) -> Qwen3TTSModel:
         """Load the Qwen3-TTS model."""
-        torch_dtype = self._parse_dtype(self.dtype)
-        attn_impl = self._detect_attn_impl(self.attn)
+        torch_dtype = parse_dtype(self.dtype)
+        attn_impl = detect_attn_impl(self.attn)
 
         kwargs: dict[str, Any] = {
             "device_map": self.device,
@@ -58,31 +67,11 @@ class QwenTTSBackend(TTSBackend):
 
         return Qwen3TTSModel.from_pretrained(self.model_id, **kwargs)
 
-    def _parse_dtype(self, dtype_str: str) -> torch.dtype:
-        """Parse dtype string to torch dtype."""
-        v = dtype_str.lower()
-        if v in {"bfloat16", "bf16"}:
-            return torch.bfloat16
-        if v in {"float16", "fp16"}:
-            return torch.float16
-        if v in {"float32", "fp32"}:
-            return torch.float32
-        raise ValueError(f"Unsupported dtype: {dtype_str}")
-
-    def _detect_attn_impl(self, requested: str) -> str | None:
-        """Detect attention implementation."""
-        if requested == "none":
-            return None
-        if requested == "auto":
-            try:
-                import flash_attn  # type: ignore[import-untyped] # noqa: F401
-
-                return "flash_attention_2"
-            except Exception:
-                return None
-        if requested == "flash_attention_2":
-            return "flash_attention_2"
-        raise ValueError("attn must be one of: auto, none, flash_attention_2")
+    def unload(self) -> None:
+        """Release the model so its GPU/CPU memory can be reclaimed."""
+        self._model = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def generate_voice_design(
         self, text: str, language: str, instruction: str, **kwargs: Any

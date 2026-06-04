@@ -17,7 +17,7 @@ class TestBackendFactory:
 
     def test_factory_creates_qwen_backend(self):
         """Test that factory creates Qwen backend correctly."""
-        with patch.dict(os.environ, {"TTS_BACKEND": "qwen"}):
+        with patch.dict(os.environ, {"TTS_DEFAULT_BACKEND": "qwen"}):
             backend = TTSBackendFactory.create(
                 backend_type="qwen",
                 model_id="Qwen/Qwen3-TTS-12Hz-1.7B-Base",
@@ -51,8 +51,8 @@ class TestBackendFactory:
         assert len(backends) >= 2
 
     def test_factory_uses_env_var_default(self):
-        """Test that factory uses TTS_BACKEND env var as default."""
-        with patch.dict(os.environ, {"TTS_BACKEND": "qwen"}):
+        """Test that factory uses TTS_DEFAULT_BACKEND env var as default."""
+        with patch.dict(os.environ, {"TTS_DEFAULT_BACKEND": "qwen"}):
             backend = TTSBackendFactory.create(
                 model_id="Qwen/Qwen3-TTS-12Hz-1.7B-Base",
                 device="cpu",
@@ -106,35 +106,35 @@ class TestQwenBackend:
         assert backend.dtype == "float32"
         assert backend.attn == "none"
 
-    def test_qwen_backend_parse_dtype(self):
+    def test_parse_dtype(self):
         """Test dtype parsing."""
-        backend = QwenTTSBackend(model_id="test", device="cpu", dtype="bfloat16", attn="none")
-
         import torch
 
-        assert backend._parse_dtype("bfloat16") == torch.bfloat16
-        assert backend._parse_dtype("bf16") == torch.bfloat16
-        assert backend._parse_dtype("float16") == torch.float16
-        assert backend._parse_dtype("fp16") == torch.float16
-        assert backend._parse_dtype("float32") == torch.float32
-        assert backend._parse_dtype("fp32") == torch.float32
+        from lib.backends._torch_utils import parse_dtype
+
+        assert parse_dtype("bfloat16") == torch.bfloat16
+        assert parse_dtype("bf16") == torch.bfloat16
+        assert parse_dtype("float16") == torch.float16
+        assert parse_dtype("fp16") == torch.float16
+        assert parse_dtype("float32") == torch.float32
+        assert parse_dtype("fp32") == torch.float32
 
         with pytest.raises(ValueError, match="Unsupported dtype"):
-            backend._parse_dtype("invalid")
+            parse_dtype("invalid")
 
-    def test_qwen_backend_detect_attn_impl(self):
+    def test_detect_attn_impl(self):
         """Test attention implementation detection."""
-        backend = QwenTTSBackend(model_id="test", device="cpu", dtype="float32", attn="none")
+        from lib.backends._torch_utils import detect_attn_impl
 
-        assert backend._detect_attn_impl("none") is None
-        assert backend._detect_attn_impl("flash_attention_2") == "flash_attention_2"
+        assert detect_attn_impl("none") is None
+        assert detect_attn_impl("flash_attention_2") == "flash_attention_2"
 
         # Test auto detection (depends on flash_attn availability)
-        result = backend._detect_attn_impl("auto")
+        result = detect_attn_impl("auto")
         assert result in [None, "flash_attention_2"]
 
         with pytest.raises(ValueError, match="attn must be one of"):
-            backend._detect_attn_impl("invalid")
+            detect_attn_impl("invalid")
 
 
 class TestVibeVoiceBackend:
