@@ -39,38 +39,6 @@ class FakeVoiceRepository:
         self.saved = (voice_id, voice_config)
 
 
-def test_file_voice_metadata_uses_backend_specific_paths(tmp_path, monkeypatch):
-    from lib import paths, storage
-
-    monkeypatch.setattr(paths, "PROJECT_ROOT", tmp_path)
-    paths.ensure_backend_directories()
-
-    voice = VoiceConfig(
-        id="vv_clone",
-        language="English",
-        instruction="Warm narrator",
-        sample_text="reference transcript",
-        backend="vibevoice",
-    )
-    storage.save_voice_config("vv_clone", voice)
-
-    qwen_prompt = paths.get_prompt_path("vv_clone", "qwen")
-    vibevoice_prompt = paths.get_prompt_path("vv_clone", "vibevoice")
-    vibevoice_audio = paths.get_voice_ref_audio_path("vv_clone", "vibevoice")
-    vibevoice_prompt.write_text("{}", encoding="utf-8")
-    vibevoice_audio.write_bytes(b"RIFFfake")
-
-    assert not qwen_prompt.exists()
-    assert storage.voice_has_prompt("vv_clone") is True
-    assert storage.get_available_voice_ids() == {"vv_clone"}
-
-    info = storage.get_voice_info("vv_clone")
-    assert info is not None
-    assert info["backend"] == "vibevoice"
-    assert info["promptPath"] == str(vibevoice_prompt)
-    assert info["refAudioPath"] == str(vibevoice_audio)
-
-
 @pytest.mark.asyncio
 async def test_clone_job_copies_reference_audio_to_backend_specific_sample_path(
     tmp_path, monkeypatch

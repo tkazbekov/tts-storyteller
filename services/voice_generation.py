@@ -6,14 +6,11 @@ import asyncio
 import shutil
 from pathlib import Path
 
+from lib import paths
 from lib.models import VoiceCloneConfig, VoiceConfig
-from lib.paths import get_project_root, get_voice_ref_audio_path
 from lib.repositories import get_voice_repository
 from lib.voice_generation import generate_voice, generate_voice_prompt
 from services.models import get_backend
-
-# Reference audio for cloning must resolve inside this sandbox directory.
-_UPLOADS_DIR = (get_project_root() / "uploads").resolve()
 
 
 def resolve_reference_audio(ref_audio_url: str) -> Path:
@@ -27,11 +24,12 @@ def resolve_reference_audio(ref_audio_url: str) -> Path:
         ValueError: if the path escapes the uploads/ directory.
         FileNotFoundError: if the resolved file does not exist.
     """
+    uploads_dir = (paths.PROJECT_ROOT / "uploads").resolve()
     raw = Path(ref_audio_url)
-    candidate = (raw if raw.is_absolute() else get_project_root() / raw).resolve()
+    candidate = (raw if raw.is_absolute() else paths.PROJECT_ROOT / raw).resolve()
 
     try:
-        candidate.relative_to(_UPLOADS_DIR)
+        candidate.relative_to(uploads_dir)
     except ValueError:
         raise ValueError(
             "ref_audio_url must point inside the uploads/ directory; "
@@ -102,7 +100,7 @@ async def generate_voice_clone_job(voice_id: str, voice_config: VoiceCloneConfig
     )
 
     # Keep a stable backend-specific reference WAV for API playback/UI previews.
-    stored_ref_audio_path = get_voice_ref_audio_path(voice_id, backend_type)
+    stored_ref_audio_path = paths.get_voice_ref_audio_path(voice_id, backend_type)
     stored_ref_audio_path.parent.mkdir(parents=True, exist_ok=True)
     if ref_audio_path.resolve() != stored_ref_audio_path.resolve():
         shutil.copyfile(ref_audio_path, stored_ref_audio_path)

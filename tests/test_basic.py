@@ -3,11 +3,11 @@
 
 def test_imports():
     """Test that main modules can be imported."""
-    from lib import generation, models, paths, resolution, storage, validation
+    from lib import generation, incremental, models, paths, resolution, validation
 
     assert models is not None
     assert paths is not None
-    assert storage is not None
+    assert incremental is not None
     assert validation is not None
     assert resolution is not None
     assert generation is not None
