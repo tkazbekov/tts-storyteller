@@ -38,15 +38,15 @@ dev-install: check-venv ## Install development dependencies and pre-commit hook
 
 lint: check-venv ## Run linter
 	@bash -c 'source env.sh && command -v ruff >/dev/null 2>&1 || { echo "Error: ruff not found. Run make dev-install first."; exit 1; }'
-	bash -c 'source env.sh && ruff check api lib services scripts tests'
+	bash -c 'source env.sh && ruff check api lib services scripts examples tests'
 
 lint-fix: check-venv ## Run linter with automatic fixes
 	@bash -c 'source env.sh && command -v ruff >/dev/null 2>&1 || { echo "Error: ruff not found. Run make dev-install first."; exit 1; }'
-	bash -c 'source env.sh && ruff check api lib services scripts tests --fix'
+	bash -c 'source env.sh && ruff check api lib services scripts examples tests --fix'
 
 format: check-venv ## Format code
 	@bash -c 'source env.sh && command -v ruff >/dev/null 2>&1 || { echo "Error: ruff not found. Run make dev-install first."; exit 1; }'
-	bash -c 'source env.sh && ruff format api lib services scripts tests'
+	bash -c 'source env.sh && ruff format api lib services scripts examples tests'
 
 type-check: check-venv ## Run type checker
 	@bash -c 'source env.sh && command -v mypy >/dev/null 2>&1 || { echo "Error: mypy not found. Run make dev-install first."; exit 1; }'
