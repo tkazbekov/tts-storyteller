@@ -29,9 +29,6 @@ class DbStoryRepository:
 
     async def get(self, story_id: str) -> StoryTemplate:
         """Load a story by ID (UUID or slug)."""
-        return await self._get_async(story_id)
-
-    async def _get_async(self, story_id: str) -> StoryTemplate:
         async with get_session() as session:
             # Try UUID first, then slug
             try:
@@ -51,9 +48,6 @@ class DbStoryRepository:
 
     async def get_by_slug(self, slug: str) -> StoryTemplate:
         """Load a story by slug."""
-        return await self._get_by_slug_async(slug)
-
-    async def _get_by_slug_async(self, slug: str) -> StoryTemplate:
         async with get_session() as session:
             stmt = select(StoryModel).where(StoryModel.slug == slug)
             result = await session.execute(stmt)
@@ -66,9 +60,6 @@ class DbStoryRepository:
 
     async def list_ids(self) -> list[str]:
         """List all story slugs."""
-        return await self._list_ids_async()
-
-    async def _list_ids_async(self) -> list[str]:
         async with get_session() as session:
             stmt = select(StoryModel.slug).order_by(StoryModel.slug)
             result = await session.execute(stmt)
@@ -76,9 +67,6 @@ class DbStoryRepository:
 
     async def save(self, story_id: str, story: StoryTemplate) -> None:
         """Save a story (create or update)."""
-        await self._save_async(story_id, story)
-
-    async def _save_async(self, story_id: str, story: StoryTemplate) -> None:
         async with get_session() as session:
             # Check if story exists by slug
             stmt = select(StoryModel).where(StoryModel.slug == story_id)
@@ -138,9 +126,6 @@ class DbStoryRepository:
 
     async def exists(self, story_id: str) -> bool:
         """Check if a story exists."""
-        return await self._exists_async(story_id)
-
-    async def _exists_async(self, story_id: str) -> bool:
         async with get_session() as session:
             # Try UUID first, then slug
             try:
@@ -154,9 +139,6 @@ class DbStoryRepository:
 
     async def delete(self, story_id: str) -> None:
         """Delete a story."""
-        await self._delete_async(story_id)
-
-    async def _delete_async(self, story_id: str) -> None:
         async with get_session() as session:
             # Try UUID first, then slug
             try:
@@ -218,9 +200,6 @@ class DbVoiceRepository:
 
     async def get(self, voice_id: str) -> dict[str, Any] | None:
         """Get voice configuration by ID."""
-        return await self._get_async(voice_id)
-
-    async def _get_async(self, voice_id: str) -> dict[str, Any] | None:
         async with get_session() as session:
             stmt = select(VoiceModel).where(VoiceModel.id == voice_id)
             result = await session.execute(stmt)
@@ -259,9 +238,6 @@ class DbVoiceRepository:
 
     async def list_all(self) -> list[dict[str, Any]]:
         """List all voice configurations."""
-        return await self._list_all_async()
-
-    async def _list_all_async(self) -> list[dict[str, Any]]:
         async with get_session() as session:
             stmt = select(VoiceModel).order_by(VoiceModel.id)
             result = await session.execute(stmt)
@@ -280,9 +256,6 @@ class DbVoiceRepository:
 
     async def save(self, voice_id: str, voice_config: VoiceConfig) -> None:
         """Save voice configuration."""
-        await self._save_async(voice_id, voice_config)
-
-    async def _save_async(self, voice_id: str, voice_config: VoiceConfig) -> None:
         async with get_session() as session:
             stmt = select(VoiceModel).where(VoiceModel.id == voice_id)
             result = await session.execute(stmt)
@@ -305,9 +278,6 @@ class DbVoiceRepository:
 
     async def delete(self, voice_id: str) -> None:
         """Delete voice configuration."""
-        await self._delete_async(voice_id)
-
-    async def _delete_async(self, voice_id: str) -> None:
         async with get_session() as session:
             stmt = delete(VoiceModel).where(VoiceModel.id == voice_id)
             await session.execute(stmt)
@@ -332,9 +302,6 @@ class DbPoolRepository:
 
     async def get_voices(self, pool_name: str) -> list[str]:
         """Get voice IDs in a pool."""
-        return await self._get_voices_async(pool_name)
-
-    async def _get_voices_async(self, pool_name: str) -> list[str]:
         async with get_session() as session:
             stmt = (
                 select(VoicePoolMemberModel.voice_id)
@@ -346,9 +313,6 @@ class DbPoolRepository:
 
     async def list_pools(self) -> set[str]:
         """List all pool names."""
-        return await self._list_pools_async()
-
-    async def _list_pools_async(self) -> set[str]:
         async with get_session() as session:
             stmt = select(VoicePoolModel.name)
             result = await session.execute(stmt)
@@ -356,29 +320,28 @@ class DbPoolRepository:
 
     async def get_all_pools(self) -> dict[str, list[str]]:
         """Get all pools with their voice IDs."""
-        return await self._get_all_pools_async()
-
-    async def _get_all_pools_async(self) -> dict[str, list[str]]:
         async with get_session() as session:
-            stmt = select(VoicePoolModel)
+            # Single outer join so pools with no members still appear.
+            stmt = (
+                select(VoicePoolModel.name, VoicePoolMemberModel.voice_id)
+                .outerjoin(
+                    VoicePoolMemberModel,
+                    VoicePoolMemberModel.pool_id == VoicePoolModel.id,
+                )
+                .order_by(VoicePoolModel.name)
+            )
             result = await session.execute(stmt)
-            pools = result.scalars().all()
 
             pool_dict: dict[str, list[str]] = {}
-            for pool in pools:
-                members_stmt = select(VoicePoolMemberModel.voice_id).where(
-                    VoicePoolMemberModel.pool_id == pool.id
-                )
-                members_result = await session.execute(members_stmt)
-                pool_dict[pool.name] = list(members_result.scalars().all())
+            for pool_name, voice_id in result.all():
+                members = pool_dict.setdefault(pool_name, [])
+                if voice_id is not None:
+                    members.append(voice_id)
 
             return pool_dict
 
     async def save_pool(self, pool_name: str, voice_ids: list[str]) -> None:
         """Save or update a pool."""
-        await self._save_pool_async(pool_name, voice_ids)
-
-    async def _save_pool_async(self, pool_name: str, voice_ids: list[str]) -> None:
         async with get_session() as session:
             stmt = select(VoicePoolModel).where(VoicePoolModel.name == pool_name)
             result = await session.execute(stmt)
@@ -402,18 +365,12 @@ class DbPoolRepository:
 
     async def delete_pool(self, pool_name: str) -> None:
         """Delete a pool."""
-        await self._delete_pool_async(pool_name)
-
-    async def _delete_pool_async(self, pool_name: str) -> None:
         async with get_session() as session:
             stmt = delete(VoicePoolModel).where(VoicePoolModel.name == pool_name)
             await session.execute(stmt)
 
     async def add_voice(self, voice_id: str, pool_name: str) -> None:
         """Add a voice to a pool."""
-        await self._add_voice_async(voice_id, pool_name)
-
-    async def _add_voice_async(self, voice_id: str, pool_name: str) -> None:
         async with get_session() as session:
             # Get or create pool
             stmt = select(VoicePoolModel).where(VoicePoolModel.name == pool_name)
@@ -437,9 +394,6 @@ class DbPoolRepository:
 
     async def remove_voice(self, voice_id: str, pool_name: str) -> None:
         """Remove a voice from a pool."""
-        await self._remove_voice_async(voice_id, pool_name)
-
-    async def _remove_voice_async(self, voice_id: str, pool_name: str) -> None:
         async with get_session() as session:
             stmt = delete(VoicePoolMemberModel).where(
                 VoicePoolMemberModel.voice_id == voice_id,
@@ -451,9 +405,6 @@ class DbPoolRepository:
 
     async def remove_voice_from_all(self, voice_id: str) -> None:
         """Remove a voice from all pools."""
-        await self._remove_voice_from_all_async(voice_id)
-
-    async def _remove_voice_from_all_async(self, voice_id: str) -> None:
         async with get_session() as session:
             stmt = delete(VoicePoolMemberModel).where(VoicePoolMemberModel.voice_id == voice_id)
             await session.execute(stmt)
@@ -474,9 +425,6 @@ class DbJobRepository:
 
     async def get(self, job_id: str) -> Job | None:
         """Get a job by ID."""
-        return await self._get_async(job_id)
-
-    async def _get_async(self, job_id: str) -> Job | None:
         async with get_session() as session:
             try:
                 uuid_id = uuid.UUID(job_id)
@@ -494,9 +442,6 @@ class DbJobRepository:
 
     async def save(self, job: Job) -> None:
         """Save a job."""
-        await self._save_async(job)
-
-    async def _save_async(self, job: Job) -> None:
         async with get_session() as session:
             job_uuid = uuid.UUID(job.id)
             story_uuid = (
@@ -540,22 +485,10 @@ class DbJobRepository:
 
     async def get_active_for_story(self, story_id: str) -> Job | None:
         """Get active job for a story."""
-        return await self._get_active_for_story_async(story_id)
-
-    async def _get_active_for_story_async(self, story_id: str) -> Job | None:
         async with get_session() as session:
-            # story_id might be a UUID or a slug; for jobs we store UUID
-            # For now, assume it could be passed as slug and we need to look up
-            story_uuid: uuid.UUID | None
-            try:
-                story_uuid = uuid.UUID(story_id)
-            except ValueError:
-                # Look up story by slug
-                story_stmt = select(StoryModel.id).where(StoryModel.slug == story_id)
-                story_result = await session.execute(story_stmt)
-                story_uuid = story_result.scalar_one_or_none()
-                if not story_uuid:
-                    return None
+            story_uuid = await _resolve_story_id_to_uuid(session, story_id)
+            if not story_uuid:
+                return None
 
             stmt = (
                 select(JobModel)
@@ -573,9 +506,6 @@ class DbJobRepository:
 
     async def get_active_for_voice(self, voice_id: str) -> Job | None:
         """Get active job for a voice."""
-        return await self._get_active_for_voice_async(voice_id)
-
-    async def _get_active_for_voice_async(self, voice_id: str) -> Job | None:
         async with get_session() as session:
             stmt = (
                 select(JobModel)
@@ -593,9 +523,6 @@ class DbJobRepository:
 
     async def get_queued_jobs(self) -> list[Job]:
         """Get all queued jobs."""
-        return await self._get_queued_jobs_async()
-
-    async def _get_queued_jobs_async(self) -> list[Job]:
         async with get_session() as session:
             stmt = select(JobModel).where(JobModel.status == "queued").order_by(JobModel.created_at)
             result = await session.execute(stmt)
@@ -605,9 +532,6 @@ class DbJobRepository:
 
     async def mark_active_jobs_failed(self, message: str) -> int:
         """Mark all queued/running jobs as failed. Returns number updated."""
-        return await self._mark_active_jobs_failed_async(message)
-
-    async def _mark_active_jobs_failed_async(self, message: str) -> int:
         async with get_session() as session:
             now = datetime.now(UTC)
             stmt = (
@@ -628,19 +552,6 @@ class DbJobRepository:
         finished_at: str | None = None,
     ) -> None:
         """Update job status."""
-        await self._update_status_async(
-            job_id, status, message, output_path, started_at, finished_at
-        )
-
-    async def _update_status_async(
-        self,
-        job_id: str,
-        status: str,
-        message: str | None = None,
-        output_path: str | None = None,
-        started_at: str | None = None,
-        finished_at: str | None = None,
-    ) -> None:
         async with get_session() as session:
             try:
                 job_uuid = uuid.UUID(job_id)
@@ -688,23 +599,10 @@ class DbMetadataRepository:
 
     async def save_line_hashes(self, story_id: str, line_hashes: list[str], language: str) -> None:
         """Save line hashes."""
-        await self._save_line_hashes_async(story_id, line_hashes, language)
-
-    async def _save_line_hashes_async(
-        self, story_id: str, line_hashes: list[str], language: str
-    ) -> None:
         async with get_session() as session:
-            # Get story UUID
-            story_uuid: uuid.UUID | None
-            try:
-                story_uuid = uuid.UUID(story_id)
-            except ValueError:
-                # Look up by slug
-                story_stmt = select(StoryModel.id).where(StoryModel.slug == story_id)
-                story_result = await session.execute(story_stmt)
-                story_uuid = story_result.scalar_one_or_none()
-                if not story_uuid:
-                    return
+            story_uuid = await _resolve_story_id_to_uuid(session, story_id)
+            if not story_uuid:
+                return
 
             # Check if metadata exists
             stmt = select(StoryGenerationMetadataModel).where(
@@ -726,21 +624,10 @@ class DbMetadataRepository:
 
     async def load_line_hashes(self, story_id: str) -> tuple[list[str], str] | None:
         """Load line hashes and language."""
-        return await self._load_line_hashes_async(story_id)
-
-    async def _load_line_hashes_async(self, story_id: str) -> tuple[list[str], str] | None:
         async with get_session() as session:
-            # Get story UUID
-            story_uuid: uuid.UUID | None
-            try:
-                story_uuid = uuid.UUID(story_id)
-            except ValueError:
-                # Look up by slug
-                story_stmt = select(StoryModel.id).where(StoryModel.slug == story_id)
-                story_result = await session.execute(story_stmt)
-                story_uuid = story_result.scalar_one_or_none()
-                if not story_uuid:
-                    return None
+            story_uuid = await _resolve_story_id_to_uuid(session, story_id)
+            if not story_uuid:
+                return None
 
             stmt = select(StoryGenerationMetadataModel).where(
                 StoryGenerationMetadataModel.story_id == story_uuid
