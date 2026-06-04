@@ -234,13 +234,13 @@ sf.write("output.wav", result.audio, result.sample_rate)
 
 ```bash
 # Test with reference audio
-python scripts/test_vibevoice.py \
+python examples/vibevoice_smoke.py \
   --ref-audio outputs/voice_design/qwen/narrator_male.wav \
   --text "Testing VibeVoice backend" \
   --output test.wav
 
 # Use 7B model for better quality
-python scripts/test_vibevoice.py \
+python examples/vibevoice_smoke.py \
   --ref-audio reference.wav \
   --model vibevoice/VibeVoice-7B \
   --quantization 4bit

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,8 @@ from lib.repositories import (
 )
 from lib.resolution import resolve_story
 from services.models import get_backend
+
+logger = logging.getLogger(__name__)
 
 
 async def _resolve_story(story_id: str):
@@ -46,7 +49,8 @@ async def _get_voice_backends(voice_ids: set[str]) -> dict[str, str]:
             voice = await voice_repo.get(voice_id)
             backend_map[voice_id] = voice.get("backend", "qwen") if voice else "qwen"
         except Exception:
-            # If voice not found or error, default to qwen
+            # Don't fail the whole story for one lookup; default to qwen but log it.
+            logger.warning("Backend lookup failed for voice '%s'; defaulting to qwen", voice_id)
             backend_map[voice_id] = "qwen"
 
     return backend_map

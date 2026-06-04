@@ -17,18 +17,18 @@ def main():
         epilog="""
 Examples:
   # Test with Qwen-generated reference audio
-  python scripts/test_vibevoice.py \\
+  python examples/vibevoice_smoke.py \\
     --ref-audio outputs/voice_design/qwen/narrator_male.wav \\
     --text "Testing VibeVoice backend integration"
 
   # Test with 7B model
-  python scripts/test_vibevoice.py \\
+  python examples/vibevoice_smoke.py \\
     --ref-audio reference.wav \\
     --text "Hello world" \\
     --model vibevoice/VibeVoice-7B
 
   # Test with CPU (slower)
-  python scripts/test_vibevoice.py \\
+  python examples/vibevoice_smoke.py \\
     --ref-audio reference.wav \\
     --device cpu
         """,

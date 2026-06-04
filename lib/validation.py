@@ -1,4 +1,13 @@
-"""Validation logic for story templates."""
+"""Validation logic for story templates.
+
+This is the raw-JSON validator used by the ``validate_story`` CLI: it turns a
+parsed JSON dict into a flat list of human-readable error messages, including
+semantic checks (e.g. ``line.roleId`` must reference a defined role) that the
+Pydantic models don't perform. The API layer validates via the Pydantic
+``StoryTemplate`` model in ``lib.models``; as a final guard this validator also
+cross-checks that a structurally valid template constructs that model, so the
+CLI can't accept something the API would reject.
+"""
 
 from typing import Any
 
@@ -97,5 +106,20 @@ def validate_story(data: dict[str, Any]) -> list[str]:
         actor_id = line.get("actorId")
         if actor_id is not None and (not isinstance(actor_id, str) or not actor_id.strip()):
             errors.append(f"lines[{idx}].actorId must be a non-empty string when provided")
+
+    # Final guard: a structurally valid template must also construct the
+    # Pydantic model the API uses, so the CLI can't accept something the API
+    # would reject. Only run when the cheaper checks above already passed.
+    if not errors:
+        from pydantic import ValidationError
+
+        from lib.models import StoryTemplate
+
+        try:
+            StoryTemplate(**data)
+        except ValidationError as exc:
+            errors.extend(
+                f"model: {'.'.join(map(str, err['loc']))}: {err['msg']}" for err in exc.errors()
+            )
 
     return errors

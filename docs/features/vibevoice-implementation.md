@@ -48,7 +48,7 @@ Comprehensive unit tests (12 tests):
 - Data type parsing
 - Directory creation
 
-### 4. CLI Test Script (`scripts/test_vibevoice.py`)
+### 4. CLI Test Script (`examples/vibevoice_smoke.py`)
 
 Standalone testing tool with:
 - Reference audio validation
@@ -157,12 +157,12 @@ result = backend.generate_voice_clone(
 
 ```bash
 # Test with Qwen-generated reference audio
-python scripts/test_vibevoice.py \
+python examples/vibevoice_smoke.py \
   --ref-audio outputs/voice_design/qwen/narrator_male.wav \
   --text "Testing VibeVoice backend"
 
 # Use 7B model
-python scripts/test_vibevoice.py \
+python examples/vibevoice_smoke.py \
   --ref-audio reference.wav \
   --model vibevoice/VibeVoice-7B \
   --quantization 4bit
@@ -256,7 +256,7 @@ The VibeVoice backend is implemented but experimental in this repository. Valida
 ### Created:
 - `lib/backends/vibevoice.py` (283 lines)
 - `tests/test_vibevoice_backend.py` (175 lines)
-- `scripts/test_vibevoice.py` (157 lines)
+- `examples/vibevoice_smoke.py` (157 lines)
 - `docs/features/vibevoice-implementation.md` (this file)
 
 ### Modified:

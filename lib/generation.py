@@ -106,7 +106,7 @@ def generate_story_audio(
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        except Exception as e:
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
             raise RuntimeError("sox not found in PATH; cannot concatenate audio") from e
 
         concat_out = out_dir / "story_full.wav"
