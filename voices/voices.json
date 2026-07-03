@@ -40,5 +40,77 @@
     "language": "English",
     "instruction": "Elderly man with a warm, steady voice. Slightly gravelly texture, slower pace, and thoughtful delivery. Speak with gentle authority and lived-in wisdom. Use natural pauses, clear articulation, and a calm, reassuring tone. Avoid exaggerated frailty or comedy.",
     "sample_text": "I remember when this road was just dirt and dust. We took our time back then, and somehow the days felt longer. Sit for a moment\u2014there\u2019s no need to rush."
+  },
+  {
+    "id": "narrator_deep",
+    "language": "English",
+    "instruction": "Male narrator, around fifty, deep and resonant with a velvety low timbre. Slow, unhurried audiobook pacing with deliberate pauses at sentence ends. Warm gravitas, like an old friend reading by candlelight; subtle dynamic rises on dramatic moments. Crisp consonants, no mumbling, avoid monotone flatness.",
+    "sample_text": "The house at the end of the lane had been silent for thirty years. Yet that evening, as the fog rolled in from the harbor, a single light appeared in the upstairs window. Nobody in the village dared to speak of what happened next."
+  },
+  {
+    "id": "narrator_fireside",
+    "language": "English",
+    "instruction": "Male storyteller, warm and slightly husky, with a hint of playfulness behind the calm. Relaxed fireside pacing that leans into commas, small conspiratorial dips in volume, and a smile you can hear. Expressive but never theatrical; keep the intimacy of telling a story to one listener, not a hall.",
+    "sample_text": "Now, I never believed in luck, mind you \u2014 not until the winter the fox started leaving gifts on my doorstep. First a button, then a brass key, and then, one snowy morning, something I still cannot quite explain."
+  },
+  {
+    "id": "narrator_warm_f",
+    "language": "English",
+    "instruction": "Female narrator, late thirties, warm mid-range voice with a smooth, polished delivery. Measured documentary pacing, calm authority, and quiet wonder in the tone. Gentle emphasis on key words, soft sentence endings, natural breaths. Avoid breathiness and sing-song cadence; keep it grounded and intimate.",
+    "sample_text": "Every autumn, the cranes gather at the river delta, just as they have for ten thousand years. They arrive at dusk, in long silver ribbons across the sky. And for a few short weeks, the marsh becomes the loudest place for a hundred miles."
+  },
+  {
+    "id": "hero",
+    "language": "English",
+    "instruction": "Young man in his early twenties, clear bright baritone, earnest and warm with determined energy. Natural conversational rhythm that quickens when excited and softens in sincere moments. Honest, open delivery with real conviction. Avoid theatrical heroics, shouting, and forced gravitas.",
+    "sample_text": "I know the pass is dangerous, and I know what they say about the mountain. But someone has to bring the medicine through, and my horse is the fastest in the valley. Tell my mother I will be back before the first snow."
+  },
+  {
+    "id": "heroine",
+    "language": "English",
+    "instruction": "Young woman in her mid-twenties, bright and quick, confident with a spark of mischief. Crisp articulation, energetic but controlled pace, and real warmth underneath the wit. Determined and self-assured without hardness. Avoid breathy softness and sing-song inflection.",
+    "sample_text": "Oh, the lock is enchanted? Good \u2014 I was worried this would be boring. Hold the lantern steady and count to twenty, because when the guard turns the corner, we are going to be long gone."
+  },
+  {
+    "id": "mentor",
+    "language": "English",
+    "instruction": "Old man, deep and gravelly, with slow, deliberate weight behind every word. Long thoughtful pauses, quiet authority, and a lifetime of patience in the tone. Kind but unbending, like stone worn smooth. Avoid frailty and mumbling \u2014 he is old, not weak.",
+    "sample_text": "You ask me how to defeat him, and I will tell you the truth you do not want. The sword was never the lesson. Sit down, breathe, and this time \u2014 listen."
+  },
+  {
+    "id": "grandmother",
+    "language": "English",
+    "instruction": "Elderly woman, soft and cozy, with a smile you can hear in every word. Slow, soothing cadence, gentle breathiness, and storytelling patience. Tender emphasis on affectionate words, comforting and unhurried. Avoid shakiness and exaggerated quaver.",
+    "sample_text": "There now, little one, the storm is only the sky turning over in its sleep. Come sit by me and I will warm some milk. By morning the whole world will be washed clean and new."
+  },
+  {
+    "id": "villain",
+    "language": "English",
+    "instruction": "Adult man, silky and controlled, low register with cold, articulate precision. Unhurried menace, amusement without warmth, and a voice that softens to a near-whisper when making threats. Every word deliberate and savored. Avoid cartoonish growling, snarling, or raised voice.",
+    "sample_text": "Please, do sit down. You have come all this way to stop me, and that is\u2026 admirable. But look out the window, my friend \u2014 it is already done, and no one is coming to help you."
+  },
+  {
+    "id": "trickster",
+    "language": "English",
+    "instruction": "Adult man, light and quick, with a playful nasal edge and rapid, bouncy delivery. Mock-serious swings, stage-whisper asides, and irrepressible energy that dances around every sentence. Mischievous but never mean. Avoid slow pacing and monotone.",
+    "sample_text": "Technically \u2014 and I want to stress the word technically \u2014 the goat was already in the mayor's kitchen when I arrived. Could I have stopped it from eating the speech? Perhaps. Did I? Well, that is a wonderful question."
+  },
+  {
+    "id": "boy",
+    "language": "English",
+    "instruction": "Young boy around eight, bright and curious, with quick excited bursts and genuine wonder. Short, clear phrases with natural childlike rhythm, slightly breathless when amazed. Full of questions and delight. Avoid shrillness and baby talk.",
+    "sample_text": "Did you see that? It jumped right over the fence like it had springs in its legs! Come on, come on, if we hurry we can follow it to the creek before dinner."
+  },
+  {
+    "id": "girl",
+    "language": "English",
+    "instruction": "Young girl around nine, spirited and clever, confident beyond her years with a playful lilt. Clear, quick delivery that turns firm and determined when challenged. Bright without squeakiness. Avoid whining tone and exaggerated cuteness.",
+    "sample_text": "I already checked the map twice, and I am telling you, the cave is behind the waterfall. You can wait here with the snacks if you are scared. I am going to go find the treasure."
+  },
+  {
+    "id": "herald",
+    "language": "English",
+    "instruction": "Adult man, booming and formal, with town-crier projection and ceremonial pacing. Rolling emphasis, proud diction, and self-important pauses between proclamations. Grand, official, and slightly pompous. Avoid intimacy, mumbling, or casual tone.",
+    "sample_text": "Hear ye, hear ye, by order of the crown! Let it be known throughout the land that the harvest festival shall commence at dawn. All citizens are hereby invited, and attendance, naturally, is mandatory."
   }
 ]
