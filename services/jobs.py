@@ -26,6 +26,8 @@ _processing_job: str | None = None
 # worker checks this set and discards the result instead of persisting it
 # over the cancelled record.
 _cancelled_ids: set[str] = set()
+# SSE subscribers: each /jobs/events connection owns a queue of Job snapshots.
+_subscribers: set[asyncio.Queue[Job]] = set()
 _worker_task: asyncio.Task | None = None
 # Serializes the check-then-enqueue duplicate guard so two concurrent requests
 # for the same story/voice can't both pass the "already active?" check.
@@ -38,6 +40,31 @@ def _now_iso() -> str:
 
 def _new_job_id() -> str:
     return str(uuid.uuid4())
+
+
+def subscribe() -> asyncio.Queue[Job]:
+    """Register a job-event subscriber. Callers must unsubscribe() in a finally."""
+    q: asyncio.Queue[Job] = asyncio.Queue()
+    _subscribers.add(q)
+    return q
+
+
+def unsubscribe(q: asyncio.Queue[Job]) -> None:
+    _subscribers.discard(q)
+
+
+def _publish(job: Job) -> None:
+    """Broadcast a point-in-time snapshot of a job transition to subscribers.
+
+    Deep-copies the job: the worker mutates the shared Job object in place,
+    so publishing the live object would race serialization against the next
+    transition.
+    """
+    if not _subscribers:
+        return
+    snapshot = job.model_copy(deep=True)
+    for q in _subscribers:
+        q.put_nowait(snapshot)
 
 
 async def get_job(job_id: str) -> Job | None:
@@ -85,6 +112,9 @@ async def cancel_job(job_id: str) -> Job | None:
     job.status = "failed"
     job.message = "Cancelled by user"
     job.finishedAt = _now_iso()
+    # Publish before the save so subscribers see the terminal state even if
+    # persistence fails and this endpoint surfaces a 500.
+    _publish(job)
     await get_job_repository().save(job)
     del _active_jobs[job_id]
     return job
@@ -111,6 +141,7 @@ async def enqueue_story_job(story_id: str, request_params: dict[str, Any] | None
         )
         _active_jobs[job.id] = job
         _job_queue.put_nowait(job.id)
+        _publish(job)
         return job
 
 
@@ -135,6 +166,7 @@ async def enqueue_voice_job(voice_id: str, voice_config: VoiceConfig, message: s
         )
         _active_jobs[job.id] = job
         _job_queue.put_nowait(job.id)
+        _publish(job)
         return job
 
 
@@ -161,6 +193,7 @@ async def enqueue_voice_clone_job(
         )
         _active_jobs[job.id] = job
         _job_queue.put_nowait(job.id)
+        _publish(job)
         return job
 
 
@@ -191,6 +224,9 @@ async def _persist_terminal(job: Job) -> None:
 
     Never raises: a DB failure here must not be allowed to kill the worker loop.
     """
+    # Single choke point for worker terminal transitions: subscribers get the
+    # final state even if the DB save below fails.
+    _publish(job)
     try:
         await get_job_repository().save(job)
     except Exception:
@@ -229,6 +265,7 @@ async def process_job_queue() -> None:
                 if current_job.voiceId
                 else "Processing..."
             )
+            _publish(current_job)
 
             if current_job.type == "voice_generate":
                 if not current_job.voiceId:

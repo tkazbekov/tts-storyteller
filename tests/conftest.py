@@ -160,6 +160,7 @@ def clean_jobs_state():
     def _reset() -> None:
         jobs_service._active_jobs.clear()
         jobs_service._cancelled_ids.clear()
+        jobs_service._subscribers.clear()
         jobs_service._job_queue = asyncio.Queue()
         jobs_service._enqueue_lock = asyncio.Lock()
 
