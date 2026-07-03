@@ -18,6 +18,13 @@ logger = logging.getLogger(__name__)
 
 load_env()
 
+# Root logger config so service/lib loggers are visible under uvicorn
+# (uvicorn only configures its own uvicorn.* loggers).
+logging.basicConfig(
+    level=os.getenv("TTS_LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,9 +36,9 @@ async def lifespan(app: FastAPI):
 
     # Initialize database (DATABASE_URL is required)
     await init_database()
-    recovered = await recover_jobs_on_startup()
-    if recovered > 0:
-        logger.info("Recovered %d queued jobs from database", recovered)
+    stale = await recover_jobs_on_startup()
+    if stale > 0:
+        logger.info("Marked %d stale job(s) from a previous run as failed", stale)
 
     # Start the job processing worker
     start_worker()

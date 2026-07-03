@@ -1,12 +1,13 @@
-"""VibeVoice TTS backend implementation."""
+"""VibeVoice TTS backend implementation.
+
+torch/vibevoice are imported inside methods so the module stays importable
+without the vibevoice extra installed (the API boots torchless).
+"""
 
 import json
 from pathlib import Path
 from typing import Any
 
-import torch
-
-from lib.backends._torch_utils import parse_dtype
 from lib.backends.base import AudioResult, TTSBackend, VoicePrompt
 
 
@@ -71,12 +72,14 @@ class VibeVoiceBackend(TTSBackend):
 
     def _load_model(self) -> None:
         """Load VibeVoice model and processor."""
-        from vibevoice.modular.modeling_vibevoice_inference import (  # type: ignore[import-not-found]
+        from vibevoice.modular.modeling_vibevoice_inference import (
             VibeVoiceForConditionalGenerationInference,
         )
-        from vibevoice.processor.vibevoice_processor import (  # type: ignore[import-not-found]
+        from vibevoice.processor.vibevoice_processor import (
             VibeVoiceProcessor,
         )
+
+        from lib.backends._torch_utils import parse_dtype
 
         # Parse dtype
         torch_dtype = parse_dtype(self.dtype)
@@ -109,6 +112,8 @@ class VibeVoiceBackend(TTSBackend):
 
     def unload(self) -> None:
         """Release the model and processor so their memory can be reclaimed."""
+        import torch
+
         self._model = None
         self._processor = None
         if torch.cuda.is_available():
@@ -193,6 +198,8 @@ class VibeVoiceBackend(TTSBackend):
 
         if not Path(ref_audio_path).exists():
             raise FileNotFoundError(f"Reference audio not found: {ref_audio_path}")
+
+        import torch
 
         # Format text as single-speaker script
         script = f"Speaker 1: {text}"

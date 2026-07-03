@@ -8,6 +8,7 @@ import asyncio
 import sys
 
 from lib.backend_factory import TTSBackendFactory
+from lib.database import database_lifespan
 from lib.env import load_env
 from lib.generation import generate_story_audio
 from lib.repositories import get_story_repository, get_voice_repository
@@ -31,7 +32,8 @@ async def _resolve_story_async(story_id: str):
 
 async def run_async(args: argparse.Namespace) -> int:
     try:
-        story, resolved_lines = await _resolve_story_async(args.story)
+        async with database_lifespan():
+            story, resolved_lines = await _resolve_story_async(args.story)
 
         # Create backend
         backend = TTSBackendFactory.create(
@@ -44,7 +46,7 @@ async def run_async(args: argparse.Namespace) -> int:
 
         output_path = await asyncio.to_thread(
             generate_story_audio,
-            resolved_lines=resolved_lines,
+            indexed_lines=list(enumerate(resolved_lines)),
             story_id=args.story,
             tts_backend=backend,
             language=args.language,

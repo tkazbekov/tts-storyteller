@@ -27,7 +27,7 @@ def detect_attn_impl(requested: str) -> str | None:
         return None
     if requested == "auto":
         try:
-            import flash_attn  # type: ignore[import-untyped] # noqa: F401
+            import flash_attn  # noqa: F401
 
             return "flash_attention_2"
         except ImportError:

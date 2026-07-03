@@ -28,246 +28,6 @@
         }
       }
     },
-    "/voices": {
-      "get": {
-        "summary": "List Voices",
-        "description": "List all available voices, optionally filtered by pool.\n\nArgs:\n    pool: Optional pool name to filter voices",
-        "operationId": "list_voices_voices_get",
-        "parameters": [
-          {
-            "name": "pool",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Pool"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Voice"
-                  },
-                  "title": "Response List Voices Voices Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create Voice Endpoint",
-        "description": "Create a new voice using voice design (Qwen only).\n\nGenerates voice from text description. Not supported for VibeVoice backend.\nFor VibeVoice, use POST /voices/clone instead.\n\nGenerates WAV and prompt files, updates voices.json.\nReturns a job ID to track generation progress.",
-        "operationId": "create_voice_endpoint_voices_post",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoiceConfig"
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/voices/{voiceId}": {
-      "get": {
-        "summary": "Get Voice Endpoint",
-        "description": "Get voice details by ID.",
-        "operationId": "get_voice_endpoint_voices__voiceId__get",
-        "parameters": [
-          {
-            "name": "voiceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Voiceid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Voice"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update Voice Endpoint",
-        "description": "Update an existing voice configuration.\n\nIf config changed, triggers regeneration job.\nOtherwise, just updates voices.json.",
-        "operationId": "update_voice_endpoint_voices__voiceId__put",
-        "parameters": [
-          {
-            "name": "voiceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Voiceid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoiceConfig"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete Voice Endpoint",
-        "description": "Delete a voice.\n\nRemoves from voices.json and all pools.\nDoes not delete WAV or prompt files.",
-        "operationId": "delete_voice_endpoint_voices__voiceId__delete",
-        "parameters": [
-          {
-            "name": "voiceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Voiceid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/voices/clone": {
-      "post": {
-        "summary": "Clone Voice Endpoint",
-        "description": "Create a new voice using voice cloning from reference audio.\n\nWorks with all backends (qwen, vibevoice). Requires reference audio file.\nGenerates prompt from reference audio, updates voices.json.\nReturns a job ID to track generation progress.",
-        "operationId": "clone_voice_endpoint_voices_clone_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoiceCloneConfig"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/voices/pools": {
       "get": {
         "summary": "List Pools Endpoint",
@@ -448,6 +208,249 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices": {
+      "get": {
+        "summary": "List Voices",
+        "description": "List all available voices, optionally filtered by pool.\n\nArgs:\n    pool: Optional pool name to filter voices",
+        "operationId": "list_voices_voices_get",
+        "parameters": [
+          {
+            "name": "pool",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pool"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Voice"
+                  },
+                  "title": "Response List Voices Voices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Voice Endpoint",
+        "description": "Create a new voice using voice design (Qwen only).\n\nGenerates voice from text description. Not supported for VibeVoice backend.\nFor VibeVoice, use POST /voices/clone instead.\n\nGenerates WAV and prompt files and saves the voice to the database.\nReturns a job ID to track generation progress.",
+        "operationId": "create_voice_endpoint_voices_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/{voiceId}": {
+      "get": {
+        "summary": "Get Voice Endpoint",
+        "description": "Get voice details by ID.",
+        "operationId": "get_voice_endpoint_voices__voiceId__get",
+        "parameters": [
+          {
+            "name": "voiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+              "title": "Voiceid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Voice"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Voice Endpoint",
+        "description": "Update an existing voice configuration.\n\nIf config changed, triggers regeneration job.\nOtherwise, just saves the updated configuration.",
+        "operationId": "update_voice_endpoint_voices__voiceId__put",
+        "parameters": [
+          {
+            "name": "voiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+              "title": "Voiceid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Voice Endpoint",
+        "description": "Delete a voice.\n\nRemoves the voice from the database and all pools.\nDoes not delete WAV or prompt files.",
+        "operationId": "delete_voice_endpoint_voices__voiceId__delete",
+        "parameters": [
+          {
+            "name": "voiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+              "title": "Voiceid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/clone": {
+      "post": {
+        "summary": "Clone Voice Endpoint",
+        "description": "Create a new voice using voice cloning from reference audio.\n\nWorks with all backends (qwen, vibevoice). Requires reference audio file.\nGenerates a prompt from the reference audio and saves the voice to the database.\nReturns a job ID to track generation progress.",
+        "operationId": "clone_voice_endpoint_voices_clone_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceCloneConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -872,7 +875,7 @@
     "/audio/voices/{voiceId}.wav": {
       "get": {
         "summary": "Get Voice Audio",
-        "description": "Download the reference/sample audio for a voice.",
+        "description": "Download the backend-specific reference/sample audio for a voice.",
         "operationId": "get_voice_audio_audio_voices__voiceId__wav_get",
         "parameters": [
           {
@@ -881,6 +884,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,100}$",
               "title": "Voiceid"
             }
           }
@@ -919,6 +923,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,100}$",
               "title": "Storyid"
             }
           }
@@ -957,6 +962,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,100}$",
               "title": "Storyid"
             }
           }
@@ -996,21 +1002,22 @@
         "operationId": "get_story_audio_file_audio_stories__storyId__files__filename__get",
         "parameters": [
           {
-            "name": "storyId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Storyid"
-            }
-          },
-          {
             "name": "filename",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "title": "Filename"
+            }
+          },
+          {
+            "name": "storyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+              "title": "Storyid"
             }
           }
         ],
@@ -1043,7 +1050,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -1060,18 +1067,6 @@
             "title": "Concat",
             "description": "Whether to concatenate outputs",
             "default": true
-          },
-          "concatOut": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Concatout",
-            "description": "Output path for concatenated audio"
           }
         },
         "type": "object",
@@ -1504,6 +1499,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",
@@ -1518,7 +1520,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
             "title": "Id"
           },
           "language": {
@@ -1587,7 +1589,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
             "title": "Id",
             "description": "Voice identifier"
           },
@@ -1642,7 +1644,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
             "title": "Id",
             "description": "Voice identifier"
           },
@@ -1685,7 +1687,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
             "title": "Name",
             "description": "Pool name"
           },

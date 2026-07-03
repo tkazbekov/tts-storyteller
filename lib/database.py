@@ -57,9 +57,20 @@ async def close_database() -> None:
         _session_factory = None
 
 
-def get_engine() -> AsyncEngine | None:
-    """Get the database engine (None if database is not enabled)."""
-    return _engine
+@asynccontextmanager
+async def database_lifespan() -> AsyncGenerator[None, None]:
+    """Initialize the database for the duration of a block, then close it.
+
+    For CLI entrypoints that use the repositories outside the API's lifespan:
+
+        async with database_lifespan():
+            story = await get_story_repository().get(story_id)
+    """
+    await init_database()
+    try:
+        yield
+    finally:
+        await close_database()
 
 
 @asynccontextmanager

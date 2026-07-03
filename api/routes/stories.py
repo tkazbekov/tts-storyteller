@@ -177,8 +177,20 @@ async def generate_story_endpoint(
 
     existing_job = await get_active_story_job(storyId)
     if existing_job:
-        if cancel_existing:
+        if cancel_existing and existing_job.status == "queued":
             await cancel_job(existing_job.id)
+        elif cancel_existing:
+            # A running job keeps writing into this story's output directory
+            # until its generation thread finishes; starting a second job now
+            # would corrupt the outputs.
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Job {existing_job.id} is already running for story '{storyId}' "
+                    "and cannot be replaced mid-generation. Wait for it to finish, "
+                    "or cancel it and retry once it stops."
+                ),
+            )
         else:
             raise HTTPException(
                 status_code=409,

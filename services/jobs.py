@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 _job_queue: asyncio.Queue[str] = asyncio.Queue()
 _active_jobs: dict[str, Job] = {}
 _processing_job: str | None = None
+# Jobs cancelled while running: the generation thread can't be killed, so the
+# worker checks this set and discards the result instead of persisting it
+# over the cancelled record.
+_cancelled_ids: set[str] = set()
 _worker_task: asyncio.Task | None = None
 # Serializes the check-then-enqueue duplicate guard so two concurrent requests
 # for the same story/voice can't both pass the "already active?" check.
@@ -68,10 +72,16 @@ async def cancel_job(job_id: str) -> Job | None:
     """
     Mark an active (queued or running) job as failed with message 'Cancelled by user'.
     Persists to DB for history, then removes from active set.
+
+    A running job's generation work cannot be interrupted mid-flight (it runs
+    in a worker thread); it continues to completion but its result is discarded
+    instead of being persisted over this cancelled record.
     """
     job = _active_jobs.get(job_id)
     if not job or job.status not in ("queued", "running"):
         return None
+    if job.status == "running":
+        _cancelled_ids.add(job_id)
     job.status = "failed"
     job.message = "Cancelled by user"
     job.finishedAt = _now_iso()
@@ -156,18 +166,16 @@ async def enqueue_voice_clone_job(
 
 async def recover_jobs_on_startup() -> int:
     """
-    On startup: mark any jobs still in DB as queued/running as failed (stale).
-    We do not re-queue; active jobs live only in memory.
-    Returns 0 (no jobs recovered).
+    On startup: mark any jobs still recorded as queued/running in the DB as
+    failed (stale). We do not re-queue; active jobs live only in memory.
+
+    Returns the number of stale jobs marked failed.
     """
     job_repo = get_job_repository()
     try:
-        n = await job_repo.mark_active_jobs_failed("Server restarted")
-        if n > 0:
-            logger.info("Marked %d stale job(s) in DB as failed", n)
+        return await job_repo.mark_active_jobs_failed("Server restarted")
     except NotImplementedError:
-        pass
-    return 0
+        return 0
 
 
 def start_worker() -> asyncio.Task:
@@ -256,13 +264,22 @@ async def process_job_queue() -> None:
             else:
                 raise ValueError(f"Unknown job type: {current_job.type}")
 
+            if job_id in _cancelled_ids:
+                # Cancelled while running: the cancel already persisted the
+                # cancelled record; discard this result.
+                _cancelled_ids.discard(job_id)
+                logger.info("Job %s was cancelled while running; result discarded", job_id)
+                continue
+
             current_job.status = "succeeded"
             current_job.finishedAt = _now_iso()
             await _persist_terminal(current_job)
 
         except Exception as e:
             logger.exception("Job %s failed", job_id)
-            if current_job is not None:
+            if job_id in _cancelled_ids or current_job is None:
+                _cancelled_ids.discard(job_id)
+            else:
                 current_job.status = "failed"
                 current_job.message = str(e)
                 current_job.finishedAt = _now_iso()

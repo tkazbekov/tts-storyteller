@@ -5,6 +5,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+# Voice/pool identifiers end up in filesystem paths (prompts/, outputs/,
+# uploads/), so they must stay within a safe charset. Matches the DB's
+# String(100) columns.
+ID_PATTERN = r"^[a-zA-Z0-9_-]{1,100}$"
+
 
 class Role(BaseModel):
     """A role in a story."""
@@ -106,7 +111,7 @@ class ResolvedLine(BaseModel):
 class VoiceConfig(BaseModel):
     """Voice configuration for creation/update using voice design (Qwen only)."""
 
-    id: str = Field(..., min_length=1, description="Voice identifier")
+    id: str = Field(..., pattern=ID_PATTERN, description="Voice identifier")
     language: str = Field(..., min_length=1, description="Language for this voice")
     instruction: str = Field(..., min_length=1, description="Voice instruction/prompt")
     sample_text: str = Field(..., min_length=1, description="Sample text for voice generation")
@@ -125,7 +130,7 @@ class VoiceCloneConfig(BaseModel):
     3. Create voice clone: POST /voices/clone
     """
 
-    id: str = Field(..., min_length=1, description="Voice identifier")
+    id: str = Field(..., pattern=ID_PATTERN, description="Voice identifier")
     language: str = Field(..., min_length=1, description="Language for this voice")
     instruction: str = Field(..., min_length=1, description="Voice description/notes")
     ref_audio_url: str = Field(
@@ -140,7 +145,7 @@ class VoiceCloneConfig(BaseModel):
 class Voice(BaseModel):
     """A voice definition."""
 
-    id: str = Field(..., min_length=1)
+    id: str = Field(..., pattern=ID_PATTERN)
     language: str = Field(..., description="Language for this voice")
     instruction: str = Field(..., description="Voice instruction/prompt")
     sample_text: str | None = Field(None, description="Sample text for this voice")
@@ -152,7 +157,7 @@ class Voice(BaseModel):
 class VoicePool(BaseModel):
     """A pool of voices grouped by theme."""
 
-    name: str = Field(..., min_length=1, description="Pool name")
+    name: str = Field(..., pattern=ID_PATTERN, description="Pool name")
     voiceIds: list[str] = Field(..., description="List of voice IDs in this pool")
 
 
@@ -160,7 +165,6 @@ class GenerateRequest(BaseModel):
     """Request body for story generation."""
 
     concat: bool = Field(True, description="Whether to concatenate outputs")
-    concatOut: str | None = Field(None, description="Output path for concatenated audio")
 
 
 class Job(BaseModel):

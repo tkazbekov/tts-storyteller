@@ -103,19 +103,17 @@ async def _generate_for_backend(
     # Get backend instance
     backend = get_backend(backend_type, "base")
 
-    # Extract just the lines (without indices) for generation
-    lines_only = [line for _, line in indexed_lines]
-
     # Filter regenerate_indices to only include lines for this backend
     backend_regenerate_indices: set[int] | None = None
     if regenerate_indices is not None:
         line_indices = {idx for idx, _ in indexed_lines}
         backend_regenerate_indices = regenerate_indices & line_indices
 
-    # Generate audio (this runs in a thread pool)
+    # Generate audio (this runs in a thread pool). Lines keep their
+    # story-global indices so filenames don't collide across backends.
     await asyncio.to_thread(
         generate_story_audio,
-        resolved_lines=lines_only,
+        indexed_lines=indexed_lines,
         story_id=story_id,
         tts_backend=backend,
         language=language,
@@ -123,14 +121,12 @@ async def _generate_for_backend(
         regenerate_indices=backend_regenerate_indices,
     )
 
-    # Map generated files back to original indices
-    # generate_story_audio returns the output directory when concat=False
     from lib.paths import get_story_output_dir
 
     out_dir = get_story_output_dir(story_id)
 
     results: list[tuple[int, Path]] = []
-    for _local_idx, (original_idx, line) in enumerate(indexed_lines):
+    for original_idx, line in indexed_lines:
         # Skip if we didn't regenerate this line
         if (
             backend_regenerate_indices is not None
@@ -228,7 +224,7 @@ async def generate_story(story_id: str, request_params: dict[str, Any] | None) -
 
         output_path = await asyncio.to_thread(
             generate_story_audio,
-            resolved_lines=resolved_lines,
+            indexed_lines=list(enumerate(resolved_lines)),
             story_id=story_id,
             tts_backend=tts_backend,
             language=language,
@@ -243,9 +239,8 @@ async def generate_story(story_id: str, request_params: dict[str, Any] | None) -
     if concat:
         import subprocess
 
-        from lib.paths import get_story_full_audio_path, get_story_output_dir
+        from lib.paths import get_story_full_audio_path
 
-        get_story_output_dir(story_id)
         output_files = [str(path) for _, path in all_results]
 
         sox_path = "sox"

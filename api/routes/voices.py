@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from fastapi import Path as PathParam
 
-from lib.models import Voice, VoiceCloneConfig, VoiceConfig
+from lib.models import ID_PATTERN, Voice, VoiceCloneConfig, VoiceConfig
 from lib.repositories import get_pool_repository, get_voice_repository
 from lib.voice_metadata import should_regenerate_voice
 from services.jobs import enqueue_voice_clone_job, enqueue_voice_job, get_active_voice_job
@@ -39,7 +40,7 @@ async def list_voices(pool: str | None = None) -> list[Voice]:
 
 
 @router.get("/voices/{voiceId}")
-async def get_voice_endpoint(voiceId: str) -> Voice:
+async def get_voice_endpoint(voiceId: str = PathParam(pattern=ID_PATTERN)) -> Voice:
     """Get voice details by ID."""
     voice_repo = get_voice_repository()
 
@@ -61,7 +62,7 @@ async def create_voice_endpoint(voice_config: VoiceConfig):
     Generates voice from text description. Not supported for VibeVoice backend.
     For VibeVoice, use POST /voices/clone instead.
 
-    Generates WAV and prompt files, updates voices.json.
+    Generates WAV and prompt files and saves the voice to the database.
     Returns a job ID to track generation progress.
     """
     if voice_config.backend != "qwen":
@@ -99,7 +100,7 @@ async def clone_voice_endpoint(voice_config: VoiceCloneConfig):
     Create a new voice using voice cloning from reference audio.
 
     Works with all backends (qwen, vibevoice). Requires reference audio file.
-    Generates prompt from reference audio, updates voices.json.
+    Generates a prompt from the reference audio and saves the voice to the database.
     Returns a job ID to track generation progress.
     """
     try:
@@ -132,12 +133,14 @@ async def clone_voice_endpoint(voice_config: VoiceCloneConfig):
 
 
 @router.put("/voices/{voiceId}")
-async def update_voice_endpoint(voiceId: str, voice_config: VoiceConfig):
+async def update_voice_endpoint(
+    voice_config: VoiceConfig, voiceId: str = PathParam(pattern=ID_PATTERN)
+):
     """
     Update an existing voice configuration.
 
     If config changed, triggers regeneration job.
-    Otherwise, just updates voices.json.
+    Otherwise, just saves the updated configuration.
     """
     voice_repo = get_voice_repository()
     existing = await voice_repo.get(voiceId)
@@ -172,11 +175,11 @@ async def update_voice_endpoint(voiceId: str, voice_config: VoiceConfig):
 
 
 @router.delete("/voices/{voiceId}", status_code=204)
-async def delete_voice_endpoint(voiceId: str) -> None:
+async def delete_voice_endpoint(voiceId: str = PathParam(pattern=ID_PATTERN)) -> None:
     """
     Delete a voice.
 
-    Removes from voices.json and all pools.
+    Removes the voice from the database and all pools.
     Does not delete WAV or prompt files.
     """
     voice_repo = get_voice_repository()

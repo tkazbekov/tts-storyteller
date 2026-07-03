@@ -1,13 +1,18 @@
-"""Qwen3-TTS backend implementation."""
+"""Qwen3-TTS backend implementation.
+
+torch/qwen_tts are imported inside methods so the module stays importable
+without the qwen extra installed (the API boots torchless).
+"""
+
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import torch
-from qwen_tts import Qwen3TTSModel, VoiceClonePromptItem
-
-from lib.backends._torch_utils import detect_attn_impl, parse_dtype
 from lib.backends.base import AudioResult, TTSBackend, VoicePrompt
+
+if TYPE_CHECKING:
+    from qwen_tts import Qwen3TTSModel, VoiceClonePromptItem
 
 
 class QwenTTSBackend(TTSBackend):
@@ -55,6 +60,10 @@ class QwenTTSBackend(TTSBackend):
 
     def _load_model(self) -> Qwen3TTSModel:
         """Load the Qwen3-TTS model."""
+        from qwen_tts import Qwen3TTSModel
+
+        from lib.backends._torch_utils import detect_attn_impl, parse_dtype
+
         torch_dtype = parse_dtype(self.dtype)
         attn_impl = detect_attn_impl(self.attn)
 
@@ -69,6 +78,8 @@ class QwenTTSBackend(TTSBackend):
 
     def unload(self) -> None:
         """Release the model so its GPU/CPU memory can be reclaimed."""
+        import torch
+
         self._model = None
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -125,6 +136,9 @@ class QwenTTSBackend(TTSBackend):
 
     def _deserialize_prompt_items(self, items_data: list[dict]) -> list[VoiceClonePromptItem]:
         """Deserialize prompt items from dict format."""
+        import torch
+        from qwen_tts import VoiceClonePromptItem
+
         items: list[VoiceClonePromptItem] = []
         for d in items_data:
             ref_code = d.get("ref_code", None)
@@ -146,6 +160,8 @@ class QwenTTSBackend(TTSBackend):
 
     def save_prompt(self, prompt: VoicePrompt, path: str | Path) -> None:
         """Save prompt to disk in Qwen's .pt format."""
+        import torch
+
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -154,6 +170,8 @@ class QwenTTSBackend(TTSBackend):
 
     def load_prompt(self, path: str | Path) -> VoicePrompt:
         """Load prompt from disk."""
+        import torch
+
         data = torch.load(str(path), map_location="cpu", weights_only=True)
 
         if not isinstance(data, dict) or "items" not in data:

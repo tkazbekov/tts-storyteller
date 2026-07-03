@@ -12,7 +12,7 @@ from lib.runtime import save_wav
 
 
 def generate_story_audio(
-    resolved_lines: list[ResolvedLine],
+    indexed_lines: list[tuple[int, ResolvedLine]],
     story_id: str,
     tts_backend: TTSBackend | None = None,
     language: str = "English",
@@ -23,12 +23,15 @@ def generate_story_audio(
     Generate audio for a story from resolved lines.
 
     Args:
-        resolved_lines: List of resolved lines with voice assignments
+        indexed_lines: List of (story-global 0-based index, resolved line) pairs.
+            Indices must be global to the story even when the caller passes a
+            per-backend subset, so filenames and regeneration bookkeeping stay
+            consistent across backends.
         story_id: Story identifier (used for output directory)
         tts_backend: Optional pre-loaded TTS backend instance (for caching)
         language: Language for generation (defaults to English)
         concat: Whether to concatenate outputs into one WAV
-        regenerate_indices: Optional set of 0-based line indices to regenerate.
+        regenerate_indices: Optional set of global 0-based line indices to regenerate.
             If None, all lines are generated. If provided, only these indices
             are regenerated; other lines reuse existing files if available.
 
@@ -40,7 +43,7 @@ def generate_story_audio(
         RuntimeError: If sox is not available and concat=True
         ValueError: If no backend provided and can't create default
     """
-    if not resolved_lines:
+    if not indexed_lines:
         raise ValueError("No lines to generate")
 
     # Use provided backend or create default
@@ -62,7 +65,7 @@ def generate_story_audio(
     out_files: list[str] = []
     prompt_cache: dict[str, Any] = {}
 
-    for idx, resolved_line in enumerate(resolved_lines):
+    for idx, resolved_line in indexed_lines:
         # Check if we should reuse existing file
         if regenerate_indices is not None and idx not in regenerate_indices:
             # Try to reuse existing file

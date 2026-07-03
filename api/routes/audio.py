@@ -7,8 +7,10 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
 
+from lib.models import ID_PATTERN
 from lib.paths import (
     get_project_root,
     get_story_full_audio_path,
@@ -79,7 +81,7 @@ async def upload_reference_audio(file: UploadFile = File(...)) -> dict[str, str]
 
 
 @router.get("/audio/voices/{voiceId}.wav")
-async def get_voice_audio(voiceId: str) -> FileResponse:
+async def get_voice_audio(voiceId: str = PathParam(pattern=ID_PATTERN)) -> FileResponse:
     """Download the backend-specific reference/sample audio for a voice."""
     voice = await get_voice_repository().get(voiceId)
     backend = voice.get("backend", "qwen") if voice else "qwen"
@@ -99,7 +101,7 @@ async def get_voice_audio(voiceId: str) -> FileResponse:
 
 
 @router.get("/audio/stories/{storyId}/full.wav")
-def get_story_audio(storyId: str) -> FileResponse:
+def get_story_audio(storyId: str = PathParam(pattern=ID_PATTERN)) -> FileResponse:
     """Download the concatenated audio file for a story."""
     audio_path = get_story_full_audio_path(storyId)
 
@@ -120,7 +122,7 @@ def get_story_audio(storyId: str) -> FileResponse:
 
 
 @router.get("/audio/stories/{storyId}/files")
-def list_story_audio_files(storyId: str) -> list[str]:
+def list_story_audio_files(storyId: str = PathParam(pattern=ID_PATTERN)) -> list[str]:
     """List all individual audio files for a story."""
     output_dir = get_story_output_dir(storyId)
 
@@ -143,7 +145,9 @@ def list_story_audio_files(storyId: str) -> list[str]:
 
 
 @router.get("/audio/stories/{storyId}/files/{filename}")
-def get_story_audio_file(storyId: str, filename: str) -> FileResponse:
+def get_story_audio_file(
+    filename: str, storyId: str = PathParam(pattern=ID_PATTERN)
+) -> FileResponse:
     """Download a specific individual audio file for a story."""
     output_dir = get_story_output_dir(storyId)
     audio_path = output_dir / filename
