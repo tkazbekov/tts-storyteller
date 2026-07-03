@@ -108,7 +108,7 @@ class TestQwenBackend:
 
     def test_parse_dtype(self):
         """Test dtype parsing."""
-        import torch
+        torch = pytest.importorskip("torch", reason="requires a backend extra (torch)")
 
         from lib.backends._torch_utils import parse_dtype
 
@@ -124,6 +124,8 @@ class TestQwenBackend:
 
     def test_detect_attn_impl(self):
         """Test attention implementation detection."""
+        pytest.importorskip("torch", reason="requires a backend extra (torch)")
+
         from lib.backends._torch_utils import detect_attn_impl
 
         assert detect_attn_impl("none") is None

@@ -14,7 +14,7 @@ def test_imports():
 
 
 def test_paths_module():
-    """Test that paths module provides expected functions."""
+    """Test that paths are anchored at the project root."""
     from lib.paths import (
         get_project_root,
         get_stories_dir,
@@ -25,11 +25,8 @@ def test_paths_module():
     assert root.exists()
     assert root.is_dir()
 
-    stories_dir = get_stories_dir()
-    assert stories_dir.exists() or not stories_dir.exists()  # May or may not exist
-
-    voices_config = get_voices_config_path()
-    assert voices_config is not None
+    assert get_stories_dir() == root / "stories"
+    assert get_voices_config_path() == root / "voices" / "voices.json"
 
 
 def test_models():
