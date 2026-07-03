@@ -181,10 +181,3 @@ def get_config() -> TTSConfig:
     if _config is None:
         _config = TTSConfig.from_env()
     return _config
-
-
-def reload_config() -> TTSConfig:
-    """Reload configuration from environment (useful for testing)."""
-    global _config
-    _config = TTSConfig.from_env()
-    return _config

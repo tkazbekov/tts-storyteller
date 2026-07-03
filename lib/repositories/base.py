@@ -19,15 +19,6 @@ class StoryRepository(Protocol):
         """
         ...
 
-    async def get_by_slug(self, slug: str) -> StoryTemplate:
-        """
-        Load a story by slug.
-
-        Raises:
-            KeyError: If story not found
-        """
-        ...
-
     async def list_ids(self) -> list[str]:
         """List all story IDs (slugs for file storage, UUIDs for DB)."""
         ...
@@ -100,14 +91,6 @@ class PoolRepository(Protocol):
         """Delete a pool."""
         ...
 
-    async def add_voice(self, voice_id: str, pool_name: str) -> None:
-        """Add a voice to a pool."""
-        ...
-
-    async def remove_voice(self, voice_id: str, pool_name: str) -> None:
-        """Remove a voice from a pool."""
-        ...
-
     async def remove_voice_from_all(self, voice_id: str) -> None:
         """Remove a voice from all pools."""
         ...
@@ -124,32 +107,8 @@ class JobRepository(Protocol):
         """Save a job (create or update)."""
         ...
 
-    async def get_active_for_story(self, story_id: str) -> Job | None:
-        """Get active (queued/running) job for a story."""
-        ...
-
-    async def get_active_for_voice(self, voice_id: str) -> Job | None:
-        """Get active (queued/running) job for a voice."""
-        ...
-
-    async def get_queued_jobs(self) -> list[Job]:
-        """Get all queued jobs (for recovery on startup)."""
-        ...
-
     async def mark_active_jobs_failed(self, message: str) -> int:
         """Mark all jobs with status queued/running as failed. Returns count. Used on startup only."""
-        ...
-
-    async def update_status(
-        self,
-        job_id: str,
-        status: str,
-        message: str | None = None,
-        output_path: str | None = None,
-        started_at: str | None = None,
-        finished_at: str | None = None,
-    ) -> None:
-        """Update job status and related fields."""
         ...
 
 

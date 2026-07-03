@@ -52,10 +52,6 @@ class ModelCache:
         """Clear all cached backends (useful for testing or memory management)."""
         self._backends.clear()
 
-    def get_loaded_backends(self) -> list[tuple[str, str]]:
-        """Get list of currently loaded backend (type, purpose) pairs."""
-        return list(self._backends.keys())
-
 
 # Singleton instance
 _model_cache = ModelCache()
@@ -72,16 +68,3 @@ def get_backend(backend_type: str, purpose: str = "base") -> TTSBackend:
         TTSBackend instance
     """
     return _model_cache.get_backend(backend_type, purpose)
-
-
-# Backward compatibility helpers
-def get_base_backend() -> TTSBackend:
-    """Get the default base backend (for backward compatibility)."""
-    config = get_config()
-    return _model_cache.get_backend(config.default_backend, "base")
-
-
-def get_voice_design_backend() -> TTSBackend:
-    """Get the default voice design backend (for backward compatibility)."""
-    config = get_config()
-    return _model_cache.get_backend(config.default_backend, "voice_design")

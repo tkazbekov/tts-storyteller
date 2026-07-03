@@ -34,11 +34,6 @@ def get_voices_config_path() -> Path:
     return get_voices_dir() / "voices.json"
 
 
-def get_pools_config_path() -> Path:
-    """Get the pools configuration JSON file path."""
-    return get_voices_dir() / "pools.json"
-
-
 def get_voice_metadata_path() -> Path:
     """Get the voice metadata JSON file path."""
     return get_voices_dir() / ".voice_metadata.json"
@@ -70,11 +65,6 @@ def get_prompts_dir(backend: str | None = None) -> Path:
     if backend:
         return base / backend
     return base
-
-
-def get_outputs_dir() -> Path:
-    """Get the outputs directory path."""
-    return PROJECT_ROOT / "outputs"
 
 
 def get_story_output_dir(story_id: str) -> Path:
@@ -119,11 +109,6 @@ def get_prompt_path(voice_id: str, backend: str = "qwen") -> Path:
         - VibeVoice: .json
     """
     return get_prompts_dir(backend) / f"{voice_id}{get_prompt_extension(backend)}"
-
-
-def get_story_path(story_id: str) -> Path:
-    """Get the path to a story JSON file."""
-    return get_stories_dir() / f"{story_id}.json"
 
 
 def get_story_full_audio_path(story_id: str) -> Path:

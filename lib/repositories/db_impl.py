@@ -46,18 +46,6 @@ class DbStoryRepository:
 
             return await self._model_to_template(session, story_model)
 
-    async def get_by_slug(self, slug: str) -> StoryTemplate:
-        """Load a story by slug."""
-        async with get_session() as session:
-            stmt = select(StoryModel).where(StoryModel.slug == slug)
-            result = await session.execute(stmt)
-            story_model = result.scalar_one_or_none()
-
-            if not story_model:
-                raise KeyError(f"Story with slug '{slug}' not found")
-
-            return await self._model_to_template(session, story_model)
-
     async def list_ids(self) -> list[str]:
         """List all story slugs."""
         async with get_session() as session:
@@ -369,40 +357,6 @@ class DbPoolRepository:
             stmt = delete(VoicePoolModel).where(VoicePoolModel.name == pool_name)
             await session.execute(stmt)
 
-    async def add_voice(self, voice_id: str, pool_name: str) -> None:
-        """Add a voice to a pool."""
-        async with get_session() as session:
-            # Get or create pool
-            stmt = select(VoicePoolModel).where(VoicePoolModel.name == pool_name)
-            result = await session.execute(stmt)
-            pool = result.scalar_one_or_none()
-
-            if not pool:
-                pool = VoicePoolModel(name=pool_name)
-                session.add(pool)
-                await session.flush()
-
-            # Check if member exists
-            member_stmt = select(VoicePoolMemberModel).where(
-                VoicePoolMemberModel.pool_id == pool.id,
-                VoicePoolMemberModel.voice_id == voice_id,
-            )
-            member_result = await session.execute(member_stmt)
-            if not member_result.scalar_one_or_none():
-                member = VoicePoolMemberModel(pool_id=pool.id, voice_id=voice_id)
-                session.add(member)
-
-    async def remove_voice(self, voice_id: str, pool_name: str) -> None:
-        """Remove a voice from a pool."""
-        async with get_session() as session:
-            stmt = delete(VoicePoolMemberModel).where(
-                VoicePoolMemberModel.voice_id == voice_id,
-                VoicePoolMemberModel.pool_id.in_(
-                    select(VoicePoolModel.id).where(VoicePoolModel.name == pool_name)
-                ),
-            )
-            await session.execute(stmt)
-
     async def remove_voice_from_all(self, voice_id: str) -> None:
         """Remove a voice from all pools."""
         async with get_session() as session:
@@ -483,53 +437,6 @@ class DbJobRepository:
                 )
                 session.add(job_model)
 
-    async def get_active_for_story(self, story_id: str) -> Job | None:
-        """Get active job for a story."""
-        async with get_session() as session:
-            story_uuid = await _resolve_story_id_to_uuid(session, story_id)
-            if not story_uuid:
-                return None
-
-            stmt = (
-                select(JobModel)
-                .where(
-                    JobModel.story_id == story_uuid,
-                    JobModel.status.in_(["queued", "running"]),
-                )
-                .order_by(JobModel.created_at.desc())
-                .limit(1)
-            )
-            result = await session.execute(stmt)
-            job_model = result.scalar_one_or_none()
-
-            return self._model_to_job(job_model) if job_model else None
-
-    async def get_active_for_voice(self, voice_id: str) -> Job | None:
-        """Get active job for a voice."""
-        async with get_session() as session:
-            stmt = (
-                select(JobModel)
-                .where(
-                    JobModel.voice_id == voice_id,
-                    JobModel.status.in_(["queued", "running"]),
-                )
-                .order_by(JobModel.created_at.desc())
-                .limit(1)
-            )
-            result = await session.execute(stmt)
-            job_model = result.scalar_one_or_none()
-
-            return self._model_to_job(job_model) if job_model else None
-
-    async def get_queued_jobs(self) -> list[Job]:
-        """Get all queued jobs."""
-        async with get_session() as session:
-            stmt = select(JobModel).where(JobModel.status == "queued").order_by(JobModel.created_at)
-            result = await session.execute(stmt)
-            job_models = result.scalars().all()
-
-            return [self._model_to_job(j) for j in job_models]
-
     async def mark_active_jobs_failed(self, message: str) -> int:
         """Mark all queued/running jobs as failed. Returns number updated."""
         async with get_session() as session:
@@ -541,39 +448,6 @@ class DbJobRepository:
             )
             result = await session.execute(stmt)
             return getattr(result, "rowcount", 0) or 0
-
-    async def update_status(
-        self,
-        job_id: str,
-        status: str,
-        message: str | None = None,
-        output_path: str | None = None,
-        started_at: str | None = None,
-        finished_at: str | None = None,
-    ) -> None:
-        """Update job status."""
-        async with get_session() as session:
-            try:
-                job_uuid = uuid.UUID(job_id)
-            except ValueError:
-                return
-
-            stmt = select(JobModel).where(JobModel.id == job_uuid)
-            result = await session.execute(stmt)
-            job = result.scalar_one_or_none()
-
-            if not job:
-                return
-
-            job.status = status
-            if message is not None:
-                job.message = message
-            if output_path is not None:
-                job.output_path = output_path
-            if started_at is not None:
-                job.started_at = datetime.fromisoformat(started_at)
-            if finished_at is not None:
-                job.finished_at = datetime.fromisoformat(finished_at)
 
     def _model_to_job(self, model: JobModel) -> Job:
         """Convert a database model to a Job."""
