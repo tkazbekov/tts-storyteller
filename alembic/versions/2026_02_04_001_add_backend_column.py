@@ -1,7 +1,7 @@
 """Add backend column to voices table
 
 Revision ID: 2026_02_04_001
-Revises: 2026_02_02_002
+Revises: 002
 Create Date: 2026-02-04 08:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "2026_02_04_001"
-down_revision: str | None = "2026_02_02_002"
+down_revision: str | None = "002"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

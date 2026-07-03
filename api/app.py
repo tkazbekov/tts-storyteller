@@ -73,8 +73,9 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.include_router(voices.router)
+# pools before voices: /voices/pools must not be captured by /voices/{voiceId}
 app.include_router(pools.router)
+app.include_router(voices.router)
 app.include_router(stories.router)
 app.include_router(jobs.router)
 app.include_router(audio.router)
