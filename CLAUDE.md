@@ -16,8 +16,11 @@ TTS Storyteller - a Python text-to-speech system built around pluggable TTS back
 source env.sh
 
 # Development
-make install          # Install production dependencies
+make install          # Install base dependencies (uv sync --no-dev; no torch)
+make install-qwen     # Base + Qwen backend (torch/cu128 on Linux)
+make install-all      # Base + all backends
 make dev-install      # Install dev tools (ruff, mypy, pytest, pre-commit)
+make lock-check       # Verify uv.lock matches pyproject.toml
 make format           # Format code (ruff)
 make lint             # Check code style
 make lint-fix         # Auto-fix linting issues
@@ -46,7 +49,8 @@ lib/                  # Reusable library modules
   validation.py       # Story template validation
   resolution.py       # Voice resolution: actorId -> casting -> defaultVoiceId
   generation.py       # TTS generation + audio concatenation
-  storage.py          # File-based storage for stories/voices
+  database.py         # Async engine/session management (Postgres)
+  repositories/       # DB-backed persistence for stories/voices/pools/jobs
 
 services/             # API service layer
   jobs.py             # In-memory job queue + async processor
@@ -67,18 +71,22 @@ scripts/              # CLI tools
 voiceId = line.actorId ?? casting[roleId] ?? defaultVoiceId
 ```
 
-**Job System:** Postgres-backed async queue with states: `queued` -> `running` -> `succeeded`/`failed`
+**Job System:** In-memory async queue with states: `queued` -> `running` -> `succeeded`/`failed`. Only terminal states are persisted to Postgres (job history); active jobs live in process memory.
 
 **Storage:**
-- Stories: `stories/<story_id>.json`
+- Stories/voices/pools/jobs: Postgres via `lib/repositories/` (see `DATABASE_URL`)
 - Prompts: `prompts/<backend>/<voice_id>.<ext>` (`.pt` for Qwen, `.json` for VibeVoice)
 - Audio: `outputs/story/<story_id>/` (per-line WAVs + concatenated)
+- `stories/` and `voices/` directories hold example/seed data for the CLIs only
 
-**Model Loading:** TTS model loaded once per process and cached (see `lib/runtime.py`)
+**Model Loading:** TTS backends loaded once per process and cached (see `services/models.py` `ModelCache`)
 
 ## Environment
 
-- Python 3.12 venv at `.venv`
-- CUDA 12.8 + torch 2.8.0+cu128 + FlashAttention 2.8.3
-- SoX required for audio concatenation (installed at `~/.local/bin/sox`)
+- Python 3.12 venv at `.venv` (created/managed by `uv sync`; lock in `uv.lock`)
+- torch is NOT a base dependency — it installs only with the `qwen`/`vibevoice`
+  extras (CUDA 12.8 cu128 wheels on Linux, PyPI wheels on macOS). The API and
+  tests run torchless; backends import torch lazily inside their methods.
+- FlashAttention comes from a prebuilt cu128/torch2.8/cp312 wheel (Linux x86_64 only)
+- SoX binary required for audio concatenation (installed at `~/.local/bin/sox`)
 - `env.sh` sets PYTHONPATH, activates venv, configures CUDA paths

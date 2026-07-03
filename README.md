@@ -48,18 +48,19 @@ Requirements:
 - Linux
 - Python 3.12
 - CUDA-capable GPU recommended
-- `uv` recommended, `pip` fallback supported by `scripts/start.sh`
+- `uv` (installed automatically by `scripts/start.sh` if missing)
 - Docker Compose for local Postgres, or your own `DATABASE_URL`
+
+Dependencies are declared in `pyproject.toml` and pinned in the committed
+`uv.lock`. `uv sync` installs the exact locked set for the chosen extras and
+removes anything else, so pick one install target rather than stacking them:
 
 ```bash
 git clone <your-repo-url> tts-storyteller
 cd tts-storyteller
 cp .env.example .env
-uv venv -p 3.12 .venv
+make install-qwen       # base + Qwen backend (or: install, install-vibevoice, install-all)
 source env.sh
-make install
-make install-qwen       # optional, Qwen backend
-make install-vibevoice  # optional, VibeVoice backend
 make db-up
 make db-setup
 make download-models BACKEND=qwen

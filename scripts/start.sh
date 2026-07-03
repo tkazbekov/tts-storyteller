@@ -61,13 +61,14 @@ fi
 # shellcheck disable=SC1091
 source env.sh
 
-uv pip install -r requirements.txt
-if [ "$BACKEND" = "qwen" ] || [ "$BACKEND" = "all" ]; then
-  uv pip install -r requirements-qwen.txt
-fi
-if [ "$BACKEND" = "vibevoice" ] || [ "$BACKEND" = "all" ]; then
-  uv pip install -r requirements-vibevoice.txt
-fi
+# --frozen: install exactly what uv.lock records, never re-resolve on deploy.
+SYNC_ARGS=(--frozen --no-dev)
+case "$BACKEND" in
+  qwen)      SYNC_ARGS+=(--extra qwen) ;;
+  vibevoice) SYNC_ARGS+=(--extra vibevoice) ;;
+  all)       SYNC_ARGS+=(--extra qwen --extra vibevoice) ;;
+esac
+uv sync "${SYNC_ARGS[@]}"
 
 if [ "$START_DB" = 1 ] && command -v docker >/dev/null 2>&1; then
   docker compose up -d db

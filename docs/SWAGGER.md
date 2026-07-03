@@ -162,7 +162,7 @@ When creating/updating voices:
 
 ```bash
 # Note: Requires VibeVoice dependencies installed
-# pip install -r requirements-vibevoice.txt
+# uv sync --extra vibevoice
 
 # Step 1: Upload reference audio
 1. Navigate to POST /audio/upload
@@ -300,7 +300,7 @@ Consider adding rate limiting for production:
 
 Make sure the backend is properly configured:
 - Qwen: Always available (default)
-- VibeVoice: Requires `pip install -r requirements-vibevoice.txt`
+- VibeVoice: Requires `uv sync --extra vibevoice`
 
 ### Job stays in "queued" state
 

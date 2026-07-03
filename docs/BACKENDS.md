@@ -193,7 +193,7 @@ TTS_VIBEVOICE_DIFFUSION_STEPS=50
 ### Installation
 
 ```bash
-pip install -r requirements-vibevoice.txt
+uv sync --extra vibevoice
 ```
 
 ### API Usage
@@ -337,7 +337,7 @@ pip install flash-attn --no-build-isolation  # Optional, recommended
 ### VibeVoice
 
 ```bash
-pip install -r requirements-vibevoice.txt
+uv sync --extra vibevoice
 ```
 
 ---

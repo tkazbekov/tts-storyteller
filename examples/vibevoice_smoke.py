@@ -156,7 +156,7 @@ Examples:
     except ImportError as e:
         print(f"\n✗ Import error: {e}", file=sys.stderr)
         print("\nPlease install VibeVoice dependencies:", file=sys.stderr)
-        print("  pip install -r requirements-vibevoice.txt", file=sys.stderr)
+        print("  uv sync --extra vibevoice", file=sys.stderr)
         return 1
 
     except Exception as e:

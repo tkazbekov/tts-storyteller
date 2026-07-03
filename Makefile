@@ -1,4 +1,4 @@
-.PHONY: help check-venv install install-qwen install-vibevoice dev-install lint lint-fix format type-check test check clean run-api db-up db-down apply-migrations db-setup download-models start
+.PHONY: help check-venv install install-qwen install-vibevoice install-all dev-install lock lock-check lint lint-fix format type-check test check clean run-api db-up db-down apply-migrations db-setup download-models start
 
 BACKEND ?= qwen
 PYTHON ?= python3.12
@@ -16,25 +16,36 @@ check-venv: ## Check if virtual environment is available
 		echo "Using .venv directory"; \
 	else \
 		echo "Error: No virtual environment found."; \
-		echo "  Run: ./scripts/start.sh --skip-model-download"; \
-		echo "  Or:  uv venv -p 3.12 .venv && source env.sh"; \
+		echo "  Run: make install   (uv sync creates .venv)"; \
 		exit 1; \
 	fi
 
-install: check-venv ## Install base dependencies
-	bash -c 'source env.sh && uv pip install -r requirements.txt'
+# Note: `uv sync` installs exactly the locked set for the chosen extras and
+# removes anything else (not additive like pip install): running `make install`
+# after `make install-qwen` uninstalls the qwen extra.
+install: ## Install base dependencies (no backends, no dev tools)
+	uv sync --no-dev
 
-install-qwen: check-venv ## Install Qwen backend dependencies
-	bash -c 'source env.sh && uv pip install -r requirements-qwen.txt'
+install-qwen: ## Install base + Qwen backend dependencies
+	uv sync --no-dev --extra qwen
 
-install-vibevoice: check-venv ## Install VibeVoice backend dependencies
-	bash -c 'source env.sh && uv pip install -r requirements-vibevoice.txt'
+install-vibevoice: ## Install base + VibeVoice backend dependencies
+	uv sync --no-dev --extra vibevoice
 
-dev-install: check-venv ## Install development dependencies and pre-commit hook
-	bash -c 'source env.sh && uv pip install ruff mypy pytest pytest-asyncio pre-commit'
+install-all: ## Install base + all backend dependencies
+	uv sync --no-dev --all-extras
+
+dev-install: ## Install dev tools (ruff, mypy, pytest, pre-commit) and hooks
+	uv sync
 	@if command -v git >/dev/null 2>&1 && [ -d .git ]; then \
 		bash -c 'source env.sh && pre-commit install' || echo "Warning: pre-commit install failed"; \
 	fi
+
+lock: ## Re-resolve uv.lock after changing pyproject.toml
+	uv lock
+
+lock-check: ## Verify uv.lock is in sync with pyproject.toml
+	uv lock --check
 
 lint: check-venv ## Run linter
 	@bash -c 'source env.sh && command -v ruff >/dev/null 2>&1 || { echo "Error: ruff not found. Run make dev-install first."; exit 1; }'

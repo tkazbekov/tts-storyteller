@@ -13,7 +13,7 @@ Successfully implemented the VibeVoice TTS backend using the community fork ([vi
 
 ## What Was Implemented
 
-### 1. Dependencies (`requirements-vibevoice.txt`)
+### 1. Dependencies (the `vibevoice` extra in `pyproject.toml`)
 
 Added VibeVoice community fork and required dependencies:
 - `git+https://github.com/vibevoice-community/VibeVoice.git`
@@ -230,7 +230,7 @@ The VibeVoice backend is implemented but experimental in this repository. Valida
 
 1. **Install dependencies:**
    ```bash
-   pip install -r requirements-vibevoice.txt
+   uv sync --extra vibevoice
    ```
 
 2. **Configure environment:**
@@ -260,7 +260,7 @@ The VibeVoice backend is implemented but experimental in this repository. Valida
 - `docs/features/vibevoice-implementation.md` (this file)
 
 ### Modified:
-- `requirements-vibevoice.txt` (added dependencies)
+- `pyproject.toml` (`vibevoice` extra dependencies)
 - `docs/BACKENDS.md` (updated VibeVoice section)
 - `tests/test_backends.py` (updated tests for new implementation)
 

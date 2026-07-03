@@ -1,18 +1,19 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.0
+    # Keep in lockstep with the ruff pin in pyproject.toml [dependency-groups].
+    rev: v0.15.20
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.6.14
+    hooks:
+      - id: uv-lock
 
   # Mypy is available via 'make type-check' - excluded from pre-commit due to:
   # 1. Can be slow (slows down commits)
   # 2. types-all dependency issues in pre-commit environment
   # 3. Already checked in CI/workflow via Makefile
   # Run 'make type-check' manually before committing if needed
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.7.0
-  #   hooks:
-  #     - id: mypy
-  #       args: [api, lib]
